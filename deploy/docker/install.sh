@@ -161,13 +161,23 @@ fetch deploy.sh deploy.sh
 chmod +x deploy.sh
 
 # --- Collect domain / email ---------------------------------------------------
+piped_or_noninteractive() { [ "$NONINTERACTIVE" = "1" ] || [ ! -t 0 ]; }
+
 if [ -z "$DOMAIN" ]; then
-  echo
-  log "Reverse-proxy with auto-HTTPS via Caddy is optional."
-  log "Leave domain blank for an HTTP-only install (server exposed on :${SERVER_PORT:-4000})."
-  DOMAIN="$(prompt 'Domain (e.g. sync.example.com)' '')"
+  if piped_or_noninteractive; then
+    log "No --domain given — installing in HTTP-only mode (server on :4000)."
+    log "  Pass --domain <host> --email <addr> next time for auto-HTTPS via Caddy."
+  else
+    echo
+    log "Reverse-proxy with auto-HTTPS via Caddy is optional."
+    log "Leave domain blank for an HTTP-only install (server exposed on :${SERVER_PORT:-4000})."
+    DOMAIN="$(prompt 'Domain (e.g. sync.example.com)' '')"
+  fi
 fi
 if [ -n "$DOMAIN" ] && [ -z "$ACME_EMAIL" ]; then
+  if piped_or_noninteractive; then
+    die "--domain $DOMAIN given but --email missing (required for Let's Encrypt)."
+  fi
   ACME_EMAIL="$(prompt 'Email for Let'"'"'s Encrypt notifications' '')"
   [ -z "$ACME_EMAIL" ] && die "Email is required when a domain is set."
 fi

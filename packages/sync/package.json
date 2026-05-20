@@ -1,0 +1,34 @@
+{
+  "name": "@termlnk-server/sync",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sync engine + HTTP routes + WS auth helpers. Plugs into RpcServerPlugin via DI; WebSocket transport is wired by each entrypoint (apps/server vs apps/edge-server).",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "rxjs": ">=7.0.0"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "^1.4.0",
+    "@termlnk-server/core": "workspace:*",
+    "@termlnk-server/crypto": "workspace:*",
+    "@termlnk-server/database": "workspace:*",
+    "@termlnk-server/protocol": "workspace:*",
+    "@termlnk-server/rpc-server": "workspace:*",
+    "@termlnk-server/sync-broadcast": "workspace:*"
+  },
+  "devDependencies": {
+    "@termlnk-server/shared": "workspace:*",
+    "@types/node": "^25.8.0",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "@termlnk-server/sync-broadcast",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ISyncBroadcaster abstraction for sync poke fanout. Adaptors: redis (multi-replica), memory (tests/single-process).",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./redis": "./src/adaptors/redis.broadcaster.ts",
+    "./memory": "./src/adaptors/memory.broadcaster.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "ioredis": ">=5.0.0",
+    "rxjs": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": { "optional": true }
+  },
+  "dependencies": {
+    "@termlnk-server/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@termlnk-server/shared": "workspace:*",
+    "@types/node": "^25.8.0",
+    "ioredis": "^5.10.1",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3"
+  }
+}

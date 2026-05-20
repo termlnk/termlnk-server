@@ -1,0 +1,39 @@
+{
+  "name": "termlnk-server",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.4",
+  "description": "Termlnk cloud backend — open source, self-host friendly auth + sync services",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "pnpm --filter @termlnk/server dev",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "db:generate": "pnpm --filter @termlnk-server/database db:generate",
+    "db:migrate": "pnpm --filter @termlnk/server db:migrate",
+    "docker:bootstrap": "bash deploy/docker/bootstrap.sh",
+    "docker:build": "docker compose --env-file .env -f deploy/docker/docker-compose.yml -f deploy/docker/docker-compose.build.yml build",
+    "docker:up": "pnpm docker:bootstrap && docker compose --env-file .env -f deploy/docker/docker-compose.yml -f deploy/docker/docker-compose.build.yml up -d --build",
+    "docker:down": "docker compose --env-file .env -f deploy/docker/docker-compose.yml down",
+    "docker:logs": "docker compose --env-file .env -f deploy/docker/docker-compose.yml logs -f"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^9.0.0",
+    "@termlnk-server/shared": "workspace:*",
+    "eslint": "^10.4.0",
+    "eslint-plugin-format": "^2.0.1",
+    "jiti": "^2.7.0",
+    "turbo": "^2.9.14",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.13",
+    "vitest": "^4.1.7"
+  }
+}

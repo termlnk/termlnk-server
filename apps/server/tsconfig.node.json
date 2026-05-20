@@ -1,0 +1,9 @@
+{
+  "extends": "@termlnk-server/shared/tsconfig/node",
+  "include": [
+    "vitest.config.ts",
+    "drizzle.config.ts",
+    "vite.config.ts",
+    "scripts/**/*.mjs"
+  ]
+}

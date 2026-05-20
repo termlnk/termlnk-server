@@ -1,0 +1,45 @@
+{
+  "name": "@termlnk-server/multiplayer",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multiplayer plugin — same-account device announcements (PG + Redis pubsub) + WebRTC signalling.",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@hono/node-server": ">=2.0.0",
+    "ioredis": ">=5.0.0",
+    "rxjs": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@hono/node-server": { "optional": true },
+    "ioredis": { "optional": true }
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "^1.4.0",
+    "@termlnk-server/core": "workspace:*",
+    "@termlnk-server/crypto": "workspace:*",
+    "@termlnk-server/database": "workspace:*",
+    "@termlnk-server/protocol": "workspace:*",
+    "@termlnk-server/rpc-server": "workspace:*",
+    "@termlnk-server/sync": "workspace:*",
+    "hono": "^4.12.21"
+  },
+  "devDependencies": {
+    "@hono/node-server": "^2.0.2",
+    "@termlnk-server/shared": "workspace:*",
+    "@types/node": "^25.8.0",
+    "ioredis": "^5.10.1",
+    "rxjs": "^7.8.2",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
+  }
+}

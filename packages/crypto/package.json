@@ -1,0 +1,35 @@
+{
+  "name": "@termlnk-server/crypto",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ISrpService / IJwtService / IHmacService abstractions + jose JWT, WebCrypto HMAC, Node SRP implementations.",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node-srp": "./src/implementations/node-srp.service.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "rxjs": ">=7.0.0",
+    "secure-remote-password": "^0.3.1"
+  },
+  "peerDependenciesMeta": {
+    "secure-remote-password": { "optional": true }
+  },
+  "dependencies": {
+    "@termlnk-server/core": "workspace:*",
+    "jose": "^6.2.3"
+  },
+  "devDependencies": {
+    "@termlnk-server/shared": "workspace:*",
+    "@types/node": "^25.8.0",
+    "rxjs": "^7.8.2",
+    "secure-remote-password": "^0.3.1",
+    "typescript": "^6.0.3"
+  }
+}

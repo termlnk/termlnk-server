@@ -1,0 +1,48 @@
+# fly.toml — Fly.io one-click deploy for termlnk-server
+#
+# Usage:
+#   1) Install flyctl: https://fly.io/docs/hands-on/install-flyctl/
+#   2) From the repo root: `fly launch --copy-config --config deploy/fly/fly.toml --no-deploy`
+#      (skip the auto-detected Dockerfile — we ship our own at deploy/docker/Dockerfile)
+#   3) Provision Postgres + Redis (or BYO managed services and inject DATABASE_URL/REDIS_URL):
+#      - Postgres: `fly postgres create` then `fly postgres attach <app>`
+#      - Redis:    `fly redis create` (Upstash-managed, exposes REDIS_URL secret)
+#   4) Inject required secrets:
+#      fly secrets set \
+#        JWT_ACCESS_SECRET="$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")" \
+#        JWT_REFRESH_SECRET="$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")"
+#   5) `fly deploy --config deploy/fly/fly.toml`
+
+app = "termlnk-server"
+primary_region = "iad" # us-east; change to nearest region (e.g. sjc, fra, sin, syd, nrt)
+
+[build]
+dockerfile = "../docker/Dockerfile"
+
+[env]
+PORT = "4000"
+HOST = "0.0.0.0"
+NODE_ENV = "production"
+# # Override these in your `fly secrets`-injected env; leaving defaults will fail validation.
+# # DATABASE_URL, REDIS_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET are required.
+
+[http_service]
+internal_port = 4000
+force_https = true
+auto_stop_machines = "stop"
+auto_start_machines = true
+min_machines_running = 1
+processes = [ "app" ]
+
+[[http_service.checks]]
+grace_period = "10s"
+interval = "30s"
+method = "GET"
+timeout = "5s"
+path = "/health"
+
+[[vm]]
+size = "shared-cpu-1x"
+memory = "512mb"
+cpu_kind = "shared"
+cpus = 1

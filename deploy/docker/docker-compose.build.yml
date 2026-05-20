@@ -1,0 +1,17 @@
+# Build override for developers working in this repo.
+#
+# Usage:
+#   docker compose --env-file .env \
+#     -f deploy/docker/docker-compose.yml \
+#     -f deploy/docker/docker-compose.build.yml \
+#     up -d --build
+#
+# This replaces the `image:` from docker-compose.yml with a local build of
+# deploy/docker/Dockerfile. The image: line is still present so `docker compose pull`
+# (without this override) keeps working for self-host users.
+
+services:
+  server:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile

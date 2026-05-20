@@ -1,0 +1,109 @@
+# docker-compose for termlnk-server self-host
+#
+# Default behaviour: pulls a prebuilt image from GHCR (no source needed).
+#
+# Profiles:
+#   (none)  →  postgres + redis + server. server is bound to ${SERVER_BIND}:${SERVER_PORT}.
+#   https   →  also starts caddy (auto Let's Encrypt). Requires DOMAIN + ACME_EMAIL in .env.
+#
+# Usage:
+#   docker compose --env-file .env -f docker-compose.yml up -d                    # HTTP only
+#   docker compose --env-file .env -f docker-compose.yml --profile https up -d    # HTTPS via Caddy
+#
+# Developers building from source override with docker-compose.build.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-termlnk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-termlnk}
+      POSTGRES_DB: ${POSTGRES_DB:-termlnk_server}
+    volumes:
+      # postgres:18-alpine expects PGDATA to live under /var/lib/postgresql/<major>/docker;
+      # mount the parent so pg_upgrade --link can later cross-version operations.
+      - postgres-data:/var/lib/postgresql
+    expose:
+      - '5432'
+    ports:
+      - '${POSTGRES_BIND:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432'
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U ${POSTGRES_USER:-termlnk} -d ${POSTGRES_DB:-termlnk_server}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: [redis-server, --save, '', --appendonly, 'no']
+    volumes:
+      - redis-data:/data
+    expose:
+      - '6379'
+    ports:
+      - '${REDIS_BIND:-127.0.0.1}:${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    image: ghcr.io/termlnk/termlnk-server:${TERMLNK_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-termlnk}:${POSTGRES_PASSWORD:-termlnk}@postgres:5432/${POSTGRES_DB:-termlnk_server}
+      REDIS_URL: redis://redis:6379
+      HOST: 0.0.0.0
+      PORT: 4000
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?must set in .env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?must set in .env}
+      JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-900}
+      JWT_REFRESH_TTL_SECONDS: ${JWT_REFRESH_TTL_SECONDS:-2592000}
+      ALLOW_OPEN_REGISTRATION: ${ALLOW_OPEN_REGISTRATION:-true}
+      REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+    expose:
+      - '4000'
+    ports:
+      # SERVER_BIND defaults to 0.0.0.0 (HTTP-only deployments). install.sh sets it to
+      # 127.0.0.1 when Caddy is in front so port 4000 is unreachable from the public net.
+      - '${SERVER_BIND:-0.0.0.0}:${SERVER_PORT:-4000}:4000'
+    healthcheck:
+      test: [CMD, wget, -qO-, 'http://localhost:4000/health']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles: [https]
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:?must set DOMAIN when using https profile}
+      ACME_EMAIL: ${ACME_EMAIL:?must set ACME_EMAIL when using https profile}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+
+volumes:
+  postgres-data:
+  redis-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,20 @@
+# termlnk-server reverse proxy.
+#
+# Caddy automatically provisions a Let's Encrypt cert for $DOMAIN on first request
+# (HTTP-01 challenge over port 80). Renewals happen in the background.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# WebSocket upgrade lives on the same paths as HTTP — Caddy's reverse_proxy
+	# preserves Connection/Upgrade headers automatically.
+	reverse_proxy server:4000 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}

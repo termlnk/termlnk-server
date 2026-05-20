@@ -88,10 +88,10 @@ One-line install on any Linux box with Docker 24+ (or install it as part of the 
 
 ```bash
 # HTTP only (binds 4000 on the host, no TLS — fine for behind your own proxy):
-curl -fsSL https://raw.githubusercontent.com/termlnk/termlnk-server/main/deploy/docker/install.sh | bash
+curl -fSL https://raw.githubusercontent.com/termlnk/termlnk-server/main/deploy/docker/install.sh | bash
 
 # Or with a public domain + auto-HTTPS via Caddy (Let's Encrypt):
-curl -fsSL https://raw.githubusercontent.com/termlnk/termlnk-server/main/deploy/docker/install.sh \
+curl -fSL https://raw.githubusercontent.com/termlnk/termlnk-server/main/deploy/docker/install.sh \
   | bash -s -- --domain sync.example.com --email you@example.com
 ```
 

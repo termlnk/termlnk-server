@@ -2,10 +2,10 @@
 # termlnk-server one-line installer.
 #
 # Quick install (HTTP only, localhost):
-#   curl -fsSL https://raw.githubusercontent.com/termlnk/termlnk-server/main/deploy/docker/install.sh | bash
+#   curl -fSL https://raw.githubusercontent.com/termlnk/termlnk-server/main/deploy/docker/install.sh | bash
 #
 # With domain + HTTPS (Caddy auto-provisions a Let's Encrypt cert):
-#   curl -fsSL https://raw.githubusercontent.com/termlnk/termlnk-server/main/deploy/docker/install.sh \
+#   curl -fSL https://raw.githubusercontent.com/termlnk/termlnk-server/main/deploy/docker/install.sh \
 #     | bash -s -- --domain sync.example.com --email you@example.com
 #
 # Environment overrides (all optional):
@@ -124,7 +124,7 @@ gen_secret() {
 fetch() {
   local relpath="$1" dest="$2"
   log "  → $relpath"
-  if ! curl -fsSL "$REPO_RAW/$relpath" -o "$dest"; then
+  if ! curl -fSL --connect-timeout 10 --max-time 60 "$REPO_RAW/$relpath" -o "$dest"; then
     die "Failed to download $REPO_RAW/$relpath"
   fi
 }

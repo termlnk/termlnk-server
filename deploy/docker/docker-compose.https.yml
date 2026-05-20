@@ -1,0 +1,36 @@
+# HTTPS overlay for termlnk-server.
+#
+# Adds a Caddy reverse proxy in front of the server container with automatic
+# Let's Encrypt certificate provisioning. Apply alongside the base compose:
+#
+#   docker compose --env-file .env \
+#     -f docker-compose.yml -f docker-compose.https.yml up -d
+#
+# install.sh and deploy.sh wire this up automatically when DOMAIN is set in .env.
+#
+# DOMAIN / ACME_EMAIL are required at interpolation time — keeping them in this
+# overlay (rather than in the base compose under a profile) avoids the
+# docker/compose interpolation-before-profile-filtering trap.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN must be set in .env to use docker-compose.https.yml}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set in .env to use docker-compose.https.yml}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+
+volumes:
+  caddy-data:
+  caddy-config:

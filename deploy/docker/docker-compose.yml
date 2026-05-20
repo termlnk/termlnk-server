@@ -1,14 +1,17 @@
 # docker-compose for termlnk-server self-host
 #
 # Default behaviour: pulls a prebuilt image from GHCR (no source needed).
-#
-# Profiles:
-#   (none)  →  postgres + redis + server. server is bound to ${SERVER_BIND}:${SERVER_PORT}.
-#   https   →  also starts caddy (auto Let's Encrypt). Requires DOMAIN + ACME_EMAIL in .env.
+# This file contains the base stack (postgres + redis + server) only — server
+# is bound to ${SERVER_BIND}:${SERVER_PORT}.
 #
 # Usage:
-#   docker compose --env-file .env -f docker-compose.yml up -d                    # HTTP only
-#   docker compose --env-file .env -f docker-compose.yml --profile https up -d    # HTTPS via Caddy
+#   docker compose --env-file .env -f docker-compose.yml up -d
+#     → HTTP-only deploy, server exposed on host.
+#
+#   docker compose --env-file .env \
+#     -f docker-compose.yml -f docker-compose.https.yml up -d
+#     → adds Caddy reverse proxy with auto Let's Encrypt.
+#       Requires DOMAIN + ACME_EMAIL in .env.
 #
 # Developers building from source override with docker-compose.build.yml:
 #   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
@@ -83,27 +86,6 @@ services:
       timeout: 3s
       retries: 5
 
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    profiles: [https]
-    depends_on:
-      server:
-        condition: service_healthy
-    environment:
-      DOMAIN: ${DOMAIN:?must set DOMAIN when using https profile}
-      ACME_EMAIL: ${ACME_EMAIL:?must set ACME_EMAIL when using https profile}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    ports:
-      - '80:80'
-      - '443:443'
-      - '443:443/udp'
-
 volumes:
   postgres-data:
   redis-data:
-  caddy-data:
-  caddy-config:

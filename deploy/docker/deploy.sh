@@ -30,11 +30,12 @@ POSTGRES_USER="${POSTGRES_USER:-termlnk}"
 POSTGRES_DB="${POSTGRES_DB:-termlnk_server}"
 
 compose() {
-  local profile_args=()
+  local files=(-f docker-compose.yml)
   if [ -n "${DOMAIN:-}" ]; then
-    profile_args=(--profile https)
+    [ -f docker-compose.https.yml ] || die "DOMAIN is set in .env but docker-compose.https.yml is missing. Re-run install.sh to repair."
+    files+=(-f docker-compose.https.yml)
   fi
-  docker compose --env-file .env -f docker-compose.yml "${profile_args[@]}" "$@"
+  docker compose --env-file .env "${files[@]}" "$@"
 }
 
 usage() {

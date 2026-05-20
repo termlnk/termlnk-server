@@ -139,13 +139,15 @@ if [ -d "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/.env" ]; then
   warn "$INSTALL_DIR/.env already exists — running an update instead of fresh install."
   cd "$INSTALL_DIR"
   fetch docker-compose.yml docker-compose.yml
+  fetch docker-compose.https.yml docker-compose.https.yml
+  fetch Caddyfile Caddyfile
   fetch deploy.sh deploy.sh && chmod +x deploy.sh
   # shellcheck disable=SC1091
   set -a; . ./.env; set +a
-  PROFILE_ARGS=()
-  [ -n "${DOMAIN:-}" ] && PROFILE_ARGS=(--profile https)
-  docker compose --env-file .env -f docker-compose.yml "${PROFILE_ARGS[@]}" pull
-  docker compose --env-file .env -f docker-compose.yml "${PROFILE_ARGS[@]}" up -d
+  COMPOSE_FILES=(-f docker-compose.yml)
+  [ -n "${DOMAIN:-}" ] && COMPOSE_FILES+=(-f docker-compose.https.yml)
+  docker compose --env-file .env "${COMPOSE_FILES[@]}" pull
+  docker compose --env-file .env "${COMPOSE_FILES[@]}" up -d
   ok "Updated. Run '$INSTALL_DIR/deploy.sh status' to inspect."
   exit 0
 fi
@@ -155,6 +157,7 @@ cd "$INSTALL_DIR"
 
 log "Fetching deploy artifacts from $REPO_RAW"
 fetch docker-compose.yml docker-compose.yml
+fetch docker-compose.https.yml docker-compose.https.yml
 fetch Caddyfile Caddyfile
 fetch .env.example .env.example
 fetch deploy.sh deploy.sh
@@ -227,14 +230,14 @@ chmod 600 .env
 ok "Wrote $INSTALL_DIR/.env (secrets generated)."
 
 # --- Boot ---------------------------------------------------------------------
-PROFILE_ARGS=()
-[ -n "$DOMAIN" ] && PROFILE_ARGS=(--profile https)
+COMPOSE_FILES=(-f docker-compose.yml)
+[ -n "$DOMAIN" ] && COMPOSE_FILES+=(-f docker-compose.https.yml)
 
 log "Pulling images..."
-docker compose --env-file .env -f docker-compose.yml "${PROFILE_ARGS[@]}" pull
+docker compose --env-file .env "${COMPOSE_FILES[@]}" pull
 
 log "Starting termlnk-server..."
-docker compose --env-file .env -f docker-compose.yml "${PROFILE_ARGS[@]}" up -d
+docker compose --env-file .env "${COMPOSE_FILES[@]}" up -d
 
 # --- Wait for /health ---------------------------------------------------------
 log "Waiting for server to become healthy..."

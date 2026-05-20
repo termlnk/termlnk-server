@@ -23,14 +23,18 @@
     "docker:build": "docker compose --env-file .env -f deploy/docker/docker-compose.yml -f deploy/docker/docker-compose.build.yml build",
     "docker:up": "pnpm docker:bootstrap && docker compose --env-file .env -f deploy/docker/docker-compose.yml -f deploy/docker/docker-compose.build.yml up -d --build",
     "docker:down": "docker compose --env-file .env -f deploy/docker/docker-compose.yml down",
-    "docker:logs": "docker compose --env-file .env -f deploy/docker/docker-compose.yml logs -f"
+    "docker:logs": "docker compose --env-file .env -f deploy/docker/docker-compose.yml logs -f",
+    "release": "release-it --preReleaseId=beta"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^9.0.0",
+    "@release-it-plugins/workspaces": "^5.0.3",
+    "@release-it/conventional-changelog": "^11.0.0",
     "@termlnk-server/shared": "workspace:*",
     "eslint": "^10.4.0",
     "eslint-plugin-format": "^2.0.1",
     "jiti": "^2.7.0",
+    "release-it": "^19.2.4",
     "turbo": "^2.9.14",
     "typescript": "^6.0.3",
     "vite": "^8.0.13",

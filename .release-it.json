@@ -1,0 +1,28 @@
+{
+  "git": {
+    "commitMessage": "release(server): v${version}",
+    "tagName": "v${version}",
+    "requireBranch": "main"
+  },
+  "github": {
+    "release": false,
+    "releaseName": "Server v${version}"
+  },
+  "npm": false,
+  "plugins": {
+    "@release-it/conventional-changelog": {
+      "preset": "angular",
+      "infile": "docs/CHANGELOG.md",
+      "ignoreRecommendedBump": true
+    },
+    "@release-it-plugins/workspaces": {
+      "skipChecks": true,
+      "publish": false,
+      "workspaces": [
+        "packages/*",
+        "internal/*",
+        "apps/server"
+      ]
+    }
+  }
+}

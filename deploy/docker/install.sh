@@ -51,11 +51,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# --- Interactivity: rebind stdin to TTY when piped from curl ------------------
-if [ ! -t 0 ] && [ -e /dev/tty ]; then
-  exec </dev/tty
-fi
-
+# Do NOT `exec </dev/tty` here: in `curl | bash` mode bash reads the script from
+# fd 0, so reassigning it makes bash hang reading the rest from /dev/tty.
 prompt() {
   local var_msg="$1" default="$2" reply=''
   if [ "$NONINTERACTIVE" = "1" ] || [ ! -t 0 ]; then

@@ -20,8 +20,12 @@
     "rxjs": ">=7.0.0"
   },
   "peerDependenciesMeta": {
-    "@hono/node-server": { "optional": true },
-    "ioredis": { "optional": true }
+    "@hono/node-server": {
+      "optional": true
+    },
+    "ioredis": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.4.0",

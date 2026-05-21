@@ -19,7 +19,9 @@
     "secure-remote-password": "^0.3.1"
   },
   "peerDependenciesMeta": {
-    "secure-remote-password": { "optional": true }
+    "secure-remote-password": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@termlnk-server/core": "workspace:*",

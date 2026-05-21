@@ -20,7 +20,9 @@
     "rxjs": ">=7.0.0"
   },
   "peerDependenciesMeta": {
-    "ioredis": { "optional": true }
+    "ioredis": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@termlnk-server/core": "workspace:*"

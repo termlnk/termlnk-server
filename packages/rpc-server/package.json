@@ -21,9 +21,15 @@
     "rxjs": ">=7.0.0"
   },
   "peerDependenciesMeta": {
-    "hono-pino": { "optional": true },
-    "pino": { "optional": true },
-    "pino-pretty": { "optional": true }
+    "hono-pino": {
+      "optional": true
+    },
+    "pino": {
+      "optional": true
+    },
+    "pino-pretty": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.4.0",

@@ -23,7 +23,9 @@
     "rxjs": ">=7.0.0"
   },
   "peerDependenciesMeta": {
-    "pg": { "optional": true }
+    "pg": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@termlnk-server/core": "workspace:*",

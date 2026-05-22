@@ -16,10 +16,16 @@
 export interface ICollabPluginConfig {
   /** Default `/v1/collab` */
   routePrefix?: string;
+  /** Default `/s` — invite landing path that wakes up the desktop client deep link. */
+  landingPath?: string;
+  /** URL the landing page exposes when the desktop client isn't installed yet. */
+  downloadUrl?: string;
 }
 
 export const COLLAB_PLUGIN_CONFIG_KEY = 'collab';
 
 export const defaultPluginConfig: Required<ICollabPluginConfig> = {
   routePrefix: '/v1/collab',
+  landingPath: '/s',
+  downloadUrl: 'https://termlnk.com',
 };

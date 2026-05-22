@@ -21,6 +21,7 @@ import { ICollabInvitesRepository } from '@termlnk-server/database/repositories'
 import { createRouter, IAppService, RpcServerPlugin } from '@termlnk-server/rpc-server';
 import { COLLAB_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './config.schema';
 import { CollabController } from './controllers/collab.controller';
+import { InviteLandingController } from './controllers/invite-landing.controller';
 import { CollabService, ICollabService } from './services/collab.service';
 
 export const COLLAB_PLUGIN_NAME = 'TERMLNK_COLLAB_PLUGIN';
@@ -52,10 +53,18 @@ export class CollabPlugin extends Plugin {
 
   override onReady(): void {
     const appService = this._injector.get(IAppService);
-    const prefix = this._config.routePrefix ?? defaultPluginConfig.routePrefix;
+    const config = { ...defaultPluginConfig, ...this._config };
     const router = createRouter();
     this._injector.get(CollabController).registerRoutes(router);
-    appService.mount(prefix, router);
-    this._logService.log(`[CollabPlugin] mounted at ${prefix}`);
+    appService.mount(config.routePrefix, router);
+    this._logService.log(`[CollabPlugin] mounted at ${config.routePrefix}`);
+
+    // The browser-facing landing page is mounted at the app root (outside
+    // routePrefix) on purpose: the URL is shared with humans and lives outside
+    // the `/v1` API namespace, and it skips collab's bearer-auth middleware
+    // since no user identity is required to render the deep-link bridge.
+    const landing = new InviteLandingController({ downloadUrl: config.downloadUrl });
+    appService.get(`${config.landingPath}/:inviteId`, (c) => landing.render(c.req.param('inviteId') ?? ''));
+    this._logService.log(`[CollabPlugin] invite landing mounted at ${config.landingPath}/:inviteId`);
   }
 }

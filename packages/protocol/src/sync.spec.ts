@@ -74,6 +74,39 @@ describe('sync schemas', () => {
     expect(bad.success).toBe(false);
   });
 
+  it('pushResponse parses successfully with acceptedDetails carrying per-mutation version', () => {
+    const ok = pushResponseSchema.safeParse({
+      accepted: [1, 2],
+      acceptedDetails: [
+        { id: 1, resource: 'host', entityId: 'h1', version: 42 },
+        { id: 2, resource: 'host', entityId: 'h2', version: 43 },
+      ],
+      rejected: [],
+      lastServerVersion: 43,
+    });
+    expect(ok.success).toBe(true);
+  });
+
+  it('pushResponse stays backward-compatible when acceptedDetails is omitted', () => {
+    // Old servers don't return acceptedDetails; new clients must accept that shape.
+    const ok = pushResponseSchema.safeParse({
+      accepted: [1, 2],
+      rejected: [],
+      lastServerVersion: 43,
+    });
+    expect(ok.success).toBe(true);
+  });
+
+  it('pushResponse acceptedDetails rejects negative version', () => {
+    const bad = pushResponseSchema.safeParse({
+      accepted: [1],
+      acceptedDetails: [{ id: 1, resource: 'host', entityId: 'h1', version: -1 }],
+      rejected: [],
+      lastServerVersion: 0,
+    });
+    expect(bad.success).toBe(false);
+  });
+
   it('pullRequest cursor may be null on first pull', () => {
     const ok = pullRequestSchema.safeParse({
       clientId: 'cid-1',

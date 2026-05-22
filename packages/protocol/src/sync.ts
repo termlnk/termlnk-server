@@ -56,8 +56,31 @@ export const pushRequestSchema = z.object({
 });
 export type IPushRequest = z.infer<typeof pushRequestSchema>;
 
+export const pushAcceptedDetailSchema = z.object({
+  /** per-client monotonic id, echoes the mutation that produced this row */
+  id: z.number().int().nonnegative(),
+  resource: syncResourceIdSchema,
+  entityId: z.string().min(1),
+  /** server-assigned version after applying this mutation; clients write into sync_row_meta */
+  version: z.number().int().nonnegative(),
+});
+export type IPushAcceptedDetail = z.infer<typeof pushAcceptedDetailSchema>;
+
 export const pushResponseSchema = z.object({
+  /**
+   * Legacy field kept for old clients: ids of the mutations accepted in this batch.
+   * New clients prefer `acceptedDetails` to learn the per-mutation server version and
+   * update local sync_row_meta on ack — without it, meta is only refreshed when the
+   * client later pulls its own echo, which can be skipped if the cursor has moved on.
+   */
   accepted: z.array(z.number().int().nonnegative()),
+  /**
+   * Per-mutation acceptance detail with server-assigned version. Optional so the schema
+   * stays back-compatible with clients on older protocol revs (they read only `accepted`).
+   * Idempotent skips (`mutation.id <= lastMutationId`) are included with the current
+   * persisted version so the client can still reconcile local meta on retry batches.
+   */
+  acceptedDetails: z.array(pushAcceptedDetailSchema).optional(),
   rejected: z.array(z.object({
     id: z.number().int().nonnegative(),
     reason: z.string(),

@@ -14,20 +14,8 @@
  */
 
 import type { IDBAdaptorService, ITxContext } from '@termlnk-server/database';
-import type {
-  ISyncClientsRepository,
-  ISyncGlobalVersionRepository,
-  ISyncObjectsRepository,
-} from '@termlnk-server/database/repositories';
-import type {
-  IPullRequest,
-  IPullResponse,
-  IPushRequest,
-  IPushResponse,
-  ISyncMutation,
-  ISyncPatchItem,
-  SyncResourceId,
-} from '@termlnk-server/protocol';
+import type { ISyncClientsRepository, ISyncGlobalVersionRepository, ISyncObjectsRepository } from '@termlnk-server/database/repositories';
+import type { IPullRequest, IPullResponse, IPushAcceptedDetail, IPushRequest, IPushResponse, ISyncMutation, ISyncPatchItem, SyncResourceId } from '@termlnk-server/protocol';
 import type { IPokeEnvelope, ISyncBroadcaster } from '@termlnk-server/sync-broadcast';
 import { createIdentifier } from '@termlnk-server/core';
 
@@ -82,13 +70,26 @@ export class SyncService implements ISyncService {
       let lastMutationId = lastMutationIdBefore;
 
       const accepted: number[] = [];
+      const acceptedDetails: IPushAcceptedDetail[] = [];
       const rejected: { id: number; reason: string }[] = [];
       const touchedResources = new Set<SyncResourceId>();
 
       const sorted = [...req.mutations].sort((a, b) => a.id - b.id);
       for (const m of sorted) {
         if (m.id <= lastMutationId) {
+          // Idempotent skip: this mutation was applied in a previous push round (the client
+          // is retrying because it never saw the ack). Return the row's current server
+          // version so the client can still write sync_row_meta and stop looping.
           accepted.push(m.id);
+          const existing = await this._objects.findOne(userId, m.resource, m.entityId, tx);
+          if (existing) {
+            acceptedDetails.push({
+              id: m.id,
+              resource: m.resource,
+              entityId: m.entityId,
+              version: existing.version,
+            });
+          }
           continue;
         }
         const verdict = await applyMutation(this._objects, tx, userId, m, currentVersion);
@@ -96,6 +97,12 @@ export class SyncService implements ISyncService {
           currentVersion = verdict.newVersion;
           lastMutationId = m.id;
           accepted.push(m.id);
+          acceptedDetails.push({
+            id: m.id,
+            resource: m.resource,
+            entityId: m.entityId,
+            version: verdict.newVersion,
+          });
           touchedResources.add(m.resource);
         } else {
           rejected.push({ id: m.id, reason: verdict.reason });
@@ -112,7 +119,7 @@ export class SyncService implements ISyncService {
         await this._clients.touchLastSeen(userId, req.clientId, now, tx);
       }
 
-      return { accepted, rejected, currentVersion, touchedResources };
+      return { accepted, acceptedDetails, rejected, currentVersion, touchedResources };
     });
 
     const cursor = String(result.currentVersion);
@@ -122,7 +129,12 @@ export class SyncService implements ISyncService {
       void this._broadcaster.publish<SyncResourceId>(userId, envelope).catch(() => undefined);
     }
 
-    return { accepted: result.accepted, rejected: result.rejected, lastServerVersion: result.currentVersion };
+    return {
+      accepted: result.accepted,
+      acceptedDetails: result.acceptedDetails,
+      rejected: result.rejected,
+      lastServerVersion: result.currentVersion,
+    };
   }
 
   async pull(userId: string, req: IPullRequest): Promise<IPullResponse> {

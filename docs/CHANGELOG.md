@@ -1,5 +1,13 @@
 # Changelog
 
+# [0.2.0](https://github.com/termlnk/termlnk-server/compare/v0.1.0...v0.2.0) (2026-05-22)
+
+
+### Features
+
+* **collab:** serve invite landing page at /s/:inviteId ([a29f5de](https://github.com/termlnk/termlnk-server/commit/a29f5de87c09c61603adb011d31b4d4e3cdd2f37))
+* **sync:** return per-mutation server version in push acceptedDetails ([a643d50](https://github.com/termlnk/termlnk-server/commit/a643d501e75b8877aa0f898f664da89b649331a4))
+
 # 0.1.0 (2026-05-21)
 
 

@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/shared",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Shared eslint config + tsconfig presets + vitest config for termlnk-server.",
   "author": "telan <telanflow@gmail.com>",

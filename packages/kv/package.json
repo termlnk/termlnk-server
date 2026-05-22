@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/kv",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "TTL key-value abstraction. Adaptors: ioredis (production), memory (tests / single-process).",
   "license": "PolyForm-Noncommercial-1.0.0",

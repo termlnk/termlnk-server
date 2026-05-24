@@ -38,13 +38,38 @@ export interface IMultiplayerPluginConfig {
    * Default 60 s.
    */
   sweepIntervalMs?: number;
+  /**
+   * ICE servers handed to WebRTC peers via the signaling `ready` message. STUN
+   * servers help peers discover their public reflexive address; TURN servers
+   * act as last-resort relays for symmetric NAT traversal. When unset the
+   * server returns a single public Google STUN entry so peers can still
+   * succeed in cone-NAT scenarios without operator configuration.
+   */
+  iceServers?: IIceServerConfig[];
 }
+
+/**
+ * RTCIceServer-compatible config carried over signaling. Both `urls` (single
+ * string or array) and the optional TURN credentials match the browser
+ * RTCIceServer dictionary 1:1.
+ */
+export interface IIceServerConfig {
+  readonly urls: string | string[];
+  readonly username?: string;
+  readonly credential?: string;
+}
+
+const DEFAULT_ICE_SERVERS: IIceServerConfig[] = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+];
 
 export const defaultPluginConfig: Required<Pick<
   IMultiplayerPluginConfig,
-  'routePrefix' | 'freshnessWindowMs' | 'sweepIntervalMs'
+  'routePrefix' | 'freshnessWindowMs' | 'sweepIntervalMs' | 'iceServers'
 >> = {
   routePrefix: '/v1/multiplayer',
   freshnessWindowMs: 90_000,
   sweepIntervalMs: 60_000,
+  iceServers: DEFAULT_ICE_SERVERS,
 };

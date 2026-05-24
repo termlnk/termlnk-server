@@ -16,6 +16,7 @@
 import type { ILogService } from '@termlnk-server/core';
 import type { ISignalEnvelope } from '@termlnk-server/protocol';
 import type Redis from 'ioredis';
+import type { IIceServerConfig } from '../config.schema';
 import { createIdentifier } from '@termlnk-server/core';
 
 /**
@@ -119,7 +120,9 @@ export class SignalingService implements ISignalingService {
 
   constructor(
     private readonly _logService: ILogService,
-    private readonly _redis: Redis | null = null
+    private readonly _redis: Redis | null,
+    /** ICE servers shipped to each new peer via the `ready` envelope. */
+    private readonly _iceServers: readonly IIceServerConfig[]
   ) {}
 
   attach(conn: ISignalConnection, options: ISignalAttachOptions): ISignalHandle {
@@ -139,12 +142,14 @@ export class SignalingService implements ISignalingService {
 
     // Tell the joiner who else is on the session so it can decide whether to send
     // offers (typical pattern: the late joiner picks one peer at random and sends
-    // hello; the earlier peer responds with offer).
+    // hello; the earlier peer responds with offer). Also ship the configured
+    // ICE servers so the peer doesn't need a separate STUN/TURN discovery.
     const otherPeers = [...session.peers.keys()].filter((p) => p !== options.peerId);
     conn.send(JSON.stringify({
       type: 'ready',
       peerId: options.peerId,
       peers: otherPeers,
+      iceServers: this._iceServers,
     }));
 
     return {

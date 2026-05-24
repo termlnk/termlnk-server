@@ -44,6 +44,13 @@ export class MultiplayerPlugin extends Plugin {
     const redis = this._config.redis ?? null;
     const freshnessWindowMs = this._config.freshnessWindowMs ?? defaultPluginConfig.freshnessWindowMs;
     const sweepIntervalMs = this._config.sweepIntervalMs ?? defaultPluginConfig.sweepIntervalMs;
+    const iceServers = this._config.iceServers ?? defaultPluginConfig.iceServers;
+    if (iceServers === defaultPluginConfig.iceServers) {
+      // Symmetric-NAT users (≈10–20 % of mobile carriers) have no TURN
+      // fallback with the default public-STUN-only list; surface this once
+      // at startup so operators notice in production.
+      this._logService.warn('[MultiplayerPlugin] using default ICE servers (public STUN only, no TURN). Symmetric-NAT peers will fail to connect; configure `iceServers` for production deployments.');
+    }
 
     const dependencies: Dependency[] = [
       [IAnnouncementService, {
@@ -57,7 +64,7 @@ export class MultiplayerPlugin extends Plugin {
         deps: [Injector],
       }],
       [ISignalingService, {
-        useFactory: (i: Injector) => new SignalingService(i.get(ILogService), redis),
+        useFactory: (i: Injector) => new SignalingService(i.get(ILogService), redis, iceServers),
         deps: [Injector],
       }],
       [MultiplayerController],

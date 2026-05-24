@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/termlnk/termlnk-server/compare/v0.2.0...v0.2.1) (2026-05-24)
+
+
+### Features
+
+* **collab:** mint relay-claim token for cross-account session attach ([598b9ee](https://github.com/termlnk/termlnk-server/commit/598b9ee65ed12f4585282998f02852e3610f56fe))
+* **multiplayer:** ship configurable ICE servers via signaling ready ([d768eda](https://github.com/termlnk/termlnk-server/commit/d768eda8a4eb175a53fe1c370bf8e6db37b4b8b1))
+
 # [0.2.0](https://github.com/termlnk/termlnk-server/compare/v0.1.0...v0.2.0) (2026-05-22)
 
 

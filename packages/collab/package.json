@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/collab",
   "type": "module",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Collaboration invite metadata + revoke / list. Server stores opaque capability hashes only — zero-knowledge of the actual capability content.",
   "license": "PolyForm-Noncommercial-1.0.0",

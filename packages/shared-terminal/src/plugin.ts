@@ -15,6 +15,7 @@
 
 import type { Dependency, Injector } from '@termlnk-server/core';
 import type { ISharedTerminalPluginConfig } from './config.schema';
+import { CollabPlugin } from '@termlnk-server/collab';
 import { DependentOn, IConfigService, ILogService, InjectSelf, Plugin, registerDependencies } from '@termlnk-server/core';
 import { createRouter, IAppService, RpcServerPlugin } from '@termlnk-server/rpc-server';
 import { defaultPluginConfig, SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from './config.schema';
@@ -23,7 +24,7 @@ import { IRelayService, RelayService } from './services/relay.service';
 
 export const SHARED_TERMINAL_PLUGIN_NAME = 'TERMLNK_SHARED_TERMINAL_PLUGIN';
 
-@DependentOn(RpcServerPlugin)
+@DependentOn(RpcServerPlugin, CollabPlugin)
 export class SharedTerminalPlugin extends Plugin {
   static override pluginName = SHARED_TERMINAL_PLUGIN_NAME;
 

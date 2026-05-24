@@ -22,6 +22,7 @@ import type { AppOpenAPI } from '@termlnk-server/rpc-server';
 import type { IRelayConnection, IRelayHandle } from '../services/relay.service';
 import { upgradeWebSocket } from '@hono/node-server';
 import { z } from '@hono/zod-openapi';
+import { IRelayClaimTokenService } from '@termlnk-server/collab';
 import { IJwtService } from '@termlnk-server/crypto';
 import { createWsBearerAuthMiddleware, HttpError } from '@termlnk-server/rpc-server';
 import { IRelayService } from '../services/relay.service';
@@ -35,14 +36,15 @@ const querySchema = z.object({
 export class SharedTerminalController {
   constructor(
     @IJwtService private readonly _jwt: IJwtService,
-    @IRelayService private readonly _relay: IRelayService
+    @IRelayService private readonly _relay: IRelayService,
+    @IRelayClaimTokenService private readonly _relayClaimToken: IRelayClaimTokenService
   ) {}
 
   registerRoutes(router: AppOpenAPI): void {
     router.get(
       '/',
       createWsBearerAuthMiddleware(this._jwt),
-      upgradeWebSocket((c) => {
+      upgradeWebSocket(async (c) => {
         const userId = c.get('userId') as string;
         const parsed = querySchema.safeParse({
           mode: c.req.query('mode'),
@@ -53,6 +55,24 @@ export class SharedTerminalController {
           throw new HttpError(400, 'invalid_request', 'missing or invalid relay query parameters');
         }
         const query = parsed.data;
+
+        // Optional cross-account attach: client may present a short-lived
+        // relay-claim token (minted by /v1/collab/invite/:id/claim) via the
+        // `sec-websocket-protocol: RelayToken.<token>` subprotocol. We verify
+        // the HMAC + expiry + that the token's joinerUserId matches the WS
+        // JWT subject (so a stolen token can't be used under another account).
+        // On success the relay routes this WS into the OWNER's session bucket
+        // instead of the joiner's own. Daemon-mode attaches ignore relay-claim
+        // tokens entirely.
+        let ownerUserId: string | undefined;
+        if (query.mode === 'client') {
+          ownerUserId = await this._extractOwnerUserId(
+            c.req.header('sec-websocket-protocol'),
+            userId,
+            query
+          );
+        }
+
         let handle: IRelayHandle | null = null;
         return {
           onOpen: (_evt, ws) => {
@@ -60,13 +80,16 @@ export class SharedTerminalController {
               send: (data) => ws.send(data),
               close: (code, reason) => ws.close(code, reason),
             };
-            const opts: { userId: string; sessionId: string; mode: 'daemon' | 'client'; connectionId?: string } = {
+            const opts: { userId: string; sessionId: string; mode: 'daemon' | 'client'; connectionId?: string; ownerUserId?: string } = {
               userId,
               sessionId: query.sessionId,
               mode: query.mode,
             };
             if (query.connectionId !== undefined) {
               opts.connectionId = query.connectionId;
+            }
+            if (ownerUserId !== undefined) {
+              opts.ownerUserId = ownerUserId;
             }
             handle = this._relay.attach(conn, opts);
           },
@@ -87,5 +110,39 @@ export class SharedTerminalController {
         };
       })
     );
+  }
+
+  private async _extractOwnerUserId(
+    headerValue: string | null | undefined,
+    wsUserId: string,
+    query: { sessionId: string; connectionId?: string }
+  ): Promise<string | undefined> {
+    if (!headerValue) {
+      return undefined;
+    }
+    const protocols = headerValue.split(',').map((s) => s.trim()).filter(Boolean);
+    const relayProto = protocols.find((p) => p.startsWith('RelayToken.'));
+    if (!relayProto) {
+      return undefined;
+    }
+    const token = relayProto.slice('RelayToken.'.length);
+    let payload;
+    try {
+      payload = await this._relayClaimToken.verify(token);
+    } catch {
+      // Do not surface verify()'s internal message — it would let probers
+      // distinguish "expired" from "signature mismatch" from "malformed".
+      throw new HttpError(401, 'invalid_relay_token', 'relay claim token rejected');
+    }
+    if (payload.joinerUserId !== wsUserId) {
+      throw new HttpError(403, 'relay_token_subject_mismatch', 'relay-claim token joiner does not match ws subject');
+    }
+    if (payload.sessionId !== query.sessionId) {
+      throw new HttpError(403, 'relay_token_session_mismatch', 'relay-claim token sessionId does not match query');
+    }
+    if (query.connectionId && payload.connectionId !== query.connectionId) {
+      throw new HttpError(403, 'relay_token_connection_mismatch', 'relay-claim token connectionId does not match query');
+    }
+    return payload.ownerUserId;
   }
 }

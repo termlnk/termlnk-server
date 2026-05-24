@@ -16,6 +16,7 @@
 import type { Dependency } from '@termlnk-server/core';
 import type { ICollabPluginConfig } from './config.schema';
 import { DependentOn, IConfigService, ILogService, Injector, InjectSelf, Plugin, registerDependencies } from '@termlnk-server/core';
+import { IHmacService } from '@termlnk-server/crypto';
 import { DatabasePlugin } from '@termlnk-server/database';
 import { ICollabInvitesRepository } from '@termlnk-server/database/repositories';
 import { createRouter, IAppService, RpcServerPlugin } from '@termlnk-server/rpc-server';
@@ -23,6 +24,7 @@ import { COLLAB_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './config.schema';
 import { CollabController } from './controllers/collab.controller';
 import { InviteLandingController } from './controllers/invite-landing.controller';
 import { CollabService, ICollabService } from './services/collab.service';
+import { IRelayClaimTokenService, RelayClaimTokenService } from './services/relay-claim-token.service';
 
 export const COLLAB_PLUGIN_NAME = 'TERMLNK_COLLAB_PLUGIN';
 
@@ -41,9 +43,27 @@ export class CollabPlugin extends Plugin {
   }
 
   override onStarting(): void {
+    const ttlMs = this._config.relayClaimTokenTtlMs ?? defaultPluginConfig.relayClaimTokenTtlMs;
+    // The relay-claim HMAC secret. The app wires this from JWT_ACCESS_SECRET —
+    // they share an HMAC key by design (see env.ts notes). The plugin
+    // surfaces it as config purely for testability, not because operators
+    // should set it to a different value.
+    const secret = this._config.relayClaimTokenSecret ?? '';
     const dependencies: Dependency[] = [
+      [IRelayClaimTokenService, {
+        useFactory: (i: Injector) => new RelayClaimTokenService(i.get(IHmacService), secret, ttlMs),
+        deps: [Injector],
+      }],
       [ICollabService, {
-        useFactory: (i: Injector) => new CollabService(i.get(ICollabInvitesRepository)),
+        useFactory: (i: Injector) => new CollabService(
+          i.get(ICollabInvitesRepository),
+          // When the app didn't pass a secret (e.g. legacy embedded tests),
+          // we fall back to "no cross-account support" — same-account flow
+          // still works because the joiner's own JWT routes them into the
+          // owner's bucket (same userId).
+          secret ? i.get(IRelayClaimTokenService) : null,
+          ttlMs
+        ),
         deps: [Injector],
       }],
       [CollabController],

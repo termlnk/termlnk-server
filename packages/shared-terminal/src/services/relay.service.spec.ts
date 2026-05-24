@@ -100,6 +100,34 @@ describe('relayService — single instance (Redis disabled)', () => {
     handle.onMessage('not-json');
     expect(conn.sent.at(-1)).toContain('"invalid_json"');
   });
+
+  it('rejects daemon attach that also carries ownerUserId', () => {
+    const daemon = new FakeConn();
+    expect(() =>
+      relay.attach(daemon, { userId: 'u1', mode: 'daemon', sessionId: 's1', ownerUserId: 'someone-else' })
+    ).toThrow(/ownerUserId must not be set on daemon attach/);
+  });
+
+  it('routes cross-account client into the owner bucket', () => {
+    const daemon = new FakeConn();
+    const joiner = new FakeConn();
+
+    // Daemon attaches under owner's JWT.
+    relay.attach(daemon, { userId: 'owner', mode: 'daemon', sessionId: 's1' });
+    // Joiner attaches under a DIFFERENT JWT but supplies owner's userId via
+    // ownerUserId (mimicking the controller's relay-claim-token verification).
+    const joinerHandle = relay.attach(joiner, {
+      userId: 'joiner',
+      ownerUserId: 'owner',
+      mode: 'client',
+      sessionId: 's1',
+      connectionId: 'jc',
+    });
+
+    joinerHandle.onMessage(JSON.stringify({ type: 'frame', target: 'daemon', payload: 'hi' }));
+    expect(daemon.sent.at(-1)).toContain('"source":"jc"');
+    expect(daemon.sent.at(-1)).toContain('"payload":"hi"');
+  });
 });
 
 describe('relayService — cross-instance via shared in-memory Redis stub', () => {

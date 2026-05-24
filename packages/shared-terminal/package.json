@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.4.0",
+    "@termlnk-server/collab": "workspace:*",
     "@termlnk-server/core": "workspace:*",
     "@termlnk-server/crypto": "workspace:*",
     "@termlnk-server/rpc-server": "workspace:*",

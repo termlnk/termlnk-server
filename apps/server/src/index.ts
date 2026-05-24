@@ -131,7 +131,14 @@ async function main(): Promise<void> {
     }],
     [SyncPlugin, {}],
     [PushPlugin, {}],
-    [CollabPlugin, {}],
+    [CollabPlugin, {
+      // RelayClaimToken HMAC reuses the JWT access secret. They sign
+      // different envelope shapes so cross-confusion is impossible, and the
+      // threat model collapses on JWT_ACCESS_SECRET leak anyway (an attacker
+      // could just mint a JWT for any user).
+      relayClaimTokenSecret: config.jwtAccessSecret,
+      relayClaimTokenTtlMs: config.relayClaimTokenTtlSeconds * 1000,
+    }],
     [SharedTerminalPlugin, { redis: kv.client }],
     [MultiplayerPlugin, { redis: kv.client }],
   ]);

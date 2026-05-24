@@ -147,5 +147,14 @@ export const claimCollabInviteResponseSchema = z.object({
    * "consumed_at" label without doing its own clock guesses.
    */
   consumedAt: z.string(),
+  /**
+   * One-shot HMAC token that authorises the joiner to attach to the OWNER's
+   * relay bucket even when their JWT's `sub` differs (cross-account invites).
+   * Optional for backwards-compat: same-account joiners can still attach via
+   * their regular JWT. When present, the joiner SHOULD pass it via the
+   * `sec-websocket-protocol: RelayToken.<token>` subprotocol on the
+   * `/v1/shared-terminal/` upgrade.
+   */
+  relayClaimToken: z.string().min(8).max(2048).optional(),
 });
 export type IClaimCollabInviteResponse = z.infer<typeof claimCollabInviteResponseSchema>;

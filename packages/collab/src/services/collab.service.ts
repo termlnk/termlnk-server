@@ -13,14 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type {
-  ICollabInviteRow,
-  ICollabInvitesRepository,
-} from '@termlnk-server/database/repositories';
-import type {
-  IClaimCollabInviteResponse,
-  ICollabInviteServerView,
-} from '@termlnk-server/protocol';
+import type { ICollabInviteRow, ICollabInvitesRepository } from '@termlnk-server/database/repositories';
+import type { IClaimCollabInviteResponse, ICollabInviteServerView } from '@termlnk-server/protocol';
+import type { IRelayClaimTokenService } from './relay-claim-token.service';
 import { createIdentifier } from '@termlnk-server/core';
 import { UniqueViolationError } from '@termlnk-server/database/repositories';
 import { HttpError } from '@termlnk-server/rpc-server';
@@ -98,7 +93,18 @@ function generateConnectionId(): string {
 }
 
 export class CollabService implements ICollabService {
-  constructor(private readonly _invites: ICollabInvitesRepository) {}
+  constructor(
+    private readonly _invites: ICollabInvitesRepository,
+    /**
+     * Optional. When provided, `claim()` mints a one-shot relay claim token
+     * that lets cross-account joiners attach to the OWNER's relay bucket.
+     * Without it, the response field stays undefined and cross-account
+     * scenarios remain broken (same-account still works because the
+     * joiner's own JWT routes to the same `userId:sessionId` bucket).
+     */
+    private readonly _relayClaimToken: IRelayClaimTokenService | null = null,
+    private readonly _relayClaimTokenTtlMs: number = 5 * 60 * 1000
+  ) {}
 
   async create(params: ICreateInviteParams): Promise<ICollabInviteServerView> {
     try {
@@ -163,7 +169,30 @@ export class CollabService implements ICollabService {
       throw new HttpError(400, 'invalid_capability_hash');
     }
 
-    // 3. Atomic consume — handles the concurrent-claim race for single-use invites.
+    // 3. Mint the relay-claim token BEFORE flipping the row to consumed.
+    //    Otherwise a sign() failure (e.g. WebCrypto fault) would leave a
+    //    single-use invite irreversibly consumed but the joiner with no
+    //    token — they'd be unable to retry and unable to attach. Same-account
+    //    joiners skip the token entirely (`_relayClaimToken` is null).
+    const connectionId = generateConnectionId();
+    let relayClaimToken: string | undefined;
+    if (this._relayClaimToken) {
+      // We sign the OWNER's userId (row.userId) so the relay can route the
+      // joiner's WS into the owner's session bucket. exp is server-clock;
+      // relay rejects expired tokens before binding to the bucket. The
+      // controller additionally pins payload.joinerUserId == ws JWT.userId
+      // so a leaked token can't be used under another account.
+      relayClaimToken = await this._relayClaimToken.sign({
+        ownerUserId: row.userId,
+        joinerUserId: params.claimantUserId,
+        sessionId: row.sessionId,
+        inviteId: row.inviteId,
+        connectionId,
+        exp: Date.now() + this._relayClaimTokenTtlMs,
+      });
+    }
+
+    // 4. Atomic consume — handles the concurrent-claim race for single-use invites.
     //    `false` here means another claimant won between our findByInviteId and the
     //    update, or the owner just revoked it. Either way the caller sees 410.
     const consumedAt = new Date();
@@ -172,12 +201,16 @@ export class CollabService implements ICollabService {
       throw new HttpError(410, 'invite_not_active', 'claim race lost');
     }
 
-    return {
+    const response: IClaimCollabInviteResponse = {
       sessionId: row.sessionId,
       ephPubB64: row.ephPubB64,
       role: row.role as IClaimCollabInviteResponse['role'],
-      connectionId: generateConnectionId(),
+      connectionId,
       consumedAt: consumedAt.toISOString(),
     };
+    if (relayClaimToken) {
+      response.relayClaimToken = relayClaimToken;
+    }
+    return response;
   }
 }

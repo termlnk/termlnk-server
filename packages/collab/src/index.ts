@@ -18,3 +18,5 @@ export type { ICollabPluginConfig } from './config.schema';
 export { COLLAB_PLUGIN_NAME, CollabPlugin } from './plugin';
 export { CollabService, ICollabService } from './services/collab.service';
 export type { ICreateInviteParams } from './services/collab.service';
+export { IRelayClaimTokenService, RelayClaimTokenService } from './services/relay-claim-token.service';
+export type { IRelayClaimTokenPayload } from './services/relay-claim-token.service';

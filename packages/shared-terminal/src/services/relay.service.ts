@@ -47,6 +47,14 @@ export interface IRelayAttachOptions {
   readonly sessionId: string;
   readonly mode: 'daemon' | 'client';
   readonly connectionId?: string;
+  /**
+   * When set, the relay routes this attach into the bucket keyed by
+   * `ownerUserId:sessionId` instead of the JWT-derived `userId:sessionId`.
+   * Cross-account joiners need this — the collab claim flow mints a
+   * relay-claim token containing the owner's userId, and the controller
+   * passes that owner here on attach.
+   */
+  readonly ownerUserId?: string;
 }
 
 export interface IRelayHandle {
@@ -113,7 +121,21 @@ export class RelayService implements IRelayService {
   constructor(private readonly _redis: Redis | null = null) {}
 
   attach(conn: IRelayConnection, options: IRelayAttachOptions): IRelayHandle {
-    const session = this._getOrCreateSession(options.userId, options.sessionId);
+    if (options.mode === 'daemon' && options.ownerUserId !== undefined) {
+      // Daemon represents the session owner — its JWT userId IS the bucket
+      // key. An ownerUserId override on daemon attach would either be a
+      // controller bug or a forged path that lets a daemon plant itself in
+      // another user's bucket. Fail closed.
+      throw new Error('[RelayService] ownerUserId must not be set on daemon attach');
+    }
+    // Pick which userId keys the session bucket. For same-account attaches the
+    // joiner's own JWT-derived userId is correct (it equals the owner's). For
+    // cross-account joiners (collab claim flow), the controller passes the
+    // owner's userId via `ownerUserId` and we route into THAT bucket — the
+    // joiner sits in the owner's session even though their JWT identifies a
+    // different account.
+    const routingUserId = options.ownerUserId ?? options.userId;
+    const session = this._getOrCreateSession(routingUserId, options.sessionId);
 
     let myConnectionId: string;
     if (options.mode === 'daemon') {

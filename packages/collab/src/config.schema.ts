@@ -20,12 +20,27 @@ export interface ICollabPluginConfig {
   landingPath?: string;
   /** URL the landing page exposes when the desktop client isn't installed yet. */
   downloadUrl?: string;
+  /**
+   * HMAC secret used to sign the one-shot relay-claim token returned by
+   * `/v1/collab/invite/:id/claim`. The app wires this from JWT_ACCESS_SECRET
+   * — sharing the key is safe because the two HMACs sign distinct envelope
+   * shapes that can't be cross-confused, and a JWT secret leak already
+   * implies full session-attach capability anyway. Plugin exposes this as
+   * config purely for unit-test substitution.
+   */
+  relayClaimTokenSecret?: string;
+  /** Relay claim token TTL in ms. Default 5 minutes. */
+  relayClaimTokenTtlMs?: number;
 }
 
 export const COLLAB_PLUGIN_CONFIG_KEY = 'collab';
 
-export const defaultPluginConfig: Required<ICollabPluginConfig> = {
+export const defaultPluginConfig: Required<Pick<
+  ICollabPluginConfig,
+  'routePrefix' | 'landingPath' | 'downloadUrl' | 'relayClaimTokenTtlMs'
+>> = {
   routePrefix: '/v1/collab',
   landingPath: '/s',
   downloadUrl: 'https://termlnk.com',
+  relayClaimTokenTtlMs: 5 * 60 * 1000,
 };

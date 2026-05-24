@@ -41,6 +41,14 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: secret,
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(15 * 60),
   JWT_REFRESH_TTL_SECONDS: z.coerce.number().int().positive().default(30 * 24 * 60 * 60),
+  /**
+   * Relay claim token TTL. The token is one-shot, short-lived, and signed
+   * with JWT_ACCESS_SECRET (HMAC over a custom envelope shape that can't
+   * collide with JWT verification). A separate secret would not increase
+   * security: if JWT_ACCESS_SECRET leaks the attacker can already forge any
+   * user's access token and join any session directly.
+   */
+  RELAY_CLAIM_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(5 * 60),
   ALLOW_OPEN_REGISTRATION: booleanLike.default(true),
   REQUIRE_EMAIL_VERIFICATION: booleanLike.default(false),
   CORS_ORIGINS: z
@@ -58,6 +66,7 @@ export interface IRuntimeConfig {
   readonly jwtRefreshSecret: string;
   readonly jwtAccessTtlSeconds: number;
   readonly jwtRefreshTtlSeconds: number;
+  readonly relayClaimTokenTtlSeconds: number;
   readonly allowOpenRegistration: boolean;
   readonly requireEmailVerification: boolean;
   readonly corsOrigins: readonly string[];
@@ -81,6 +90,7 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
     jwtRefreshSecret: v.JWT_REFRESH_SECRET,
     jwtAccessTtlSeconds: v.JWT_ACCESS_TTL_SECONDS,
     jwtRefreshTtlSeconds: v.JWT_REFRESH_TTL_SECONDS,
+    relayClaimTokenTtlSeconds: v.RELAY_CLAIM_TOKEN_TTL_SECONDS,
     allowOpenRegistration: v.ALLOW_OPEN_REGISTRATION,
     requireEmailVerification: v.REQUIRE_EMAIL_VERIFICATION,
     corsOrigins: v.CORS_ORIGINS,

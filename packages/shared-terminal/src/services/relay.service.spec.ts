@@ -87,6 +87,33 @@ describe('relayService — single instance (Redis disabled)', () => {
     expect(client.sent.at(-1)).toContain('"daemon_unavailable"');
   });
 
+  it('force-closes clients with code 4002 when daemon signals shutdown', () => {
+    const daemon = new FakeConn();
+    const a = new FakeConn();
+    const b = new FakeConn();
+
+    const daemonHandle = relay.attach(daemon, { userId: 'u1', mode: 'daemon', sessionId: 's1' });
+    relay.attach(a, { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'a' });
+    relay.attach(b, { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'b' });
+
+    daemonHandle.onMessage(JSON.stringify({ type: 'shutdown' }));
+
+    expect(a.close).toHaveBeenCalledWith(4002, 'owner_left');
+    expect(b.close).toHaveBeenCalledWith(4002, 'owner_left');
+  });
+
+  it('does NOT evict clients on a bare daemon socket close (transient blip)', () => {
+    const daemon = new FakeConn();
+    const client = new FakeConn();
+
+    const daemonHandle = relay.attach(daemon, { userId: 'u1', mode: 'daemon', sessionId: 's1' });
+    relay.attach(client, { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'c1' });
+
+    daemonHandle.onClose();
+
+    expect(client.close).not.toHaveBeenCalled();
+  });
+
   it('answers ping with pong', () => {
     const conn = new FakeConn();
     const handle = relay.attach(conn, { userId: 'u1', mode: 'daemon', sessionId: 's1' });
@@ -249,5 +276,25 @@ describe('relayService — cross-instance via shared in-memory Redis stub', () =
     await new Promise((r) => setImmediate(r));
 
     expect(clientRemote.sent.at(-1)).toContain('"payload":"hi-remote"');
+  });
+
+  it('evicts clients on a peer instance when daemon signals shutdown', async () => {
+    const bus = new FakeBus();
+    const redisA = makeFakeRedis(bus) as never;
+    const redisB = makeFakeRedis(bus) as never;
+    const relayA = new RelayService(redisA);
+    const relayB = new RelayService(redisB);
+
+    const daemon = new FakeConn();
+    const clientRemote = new FakeConn();
+
+    const daemonHandle = relayA.attach(daemon, { userId: 'u1', mode: 'daemon', sessionId: 's1' });
+    relayB.attach(clientRemote, { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'remote' });
+
+    daemonHandle.onMessage(JSON.stringify({ type: 'shutdown' }));
+
+    await new Promise((r) => setImmediate(r));
+
+    expect(clientRemote.close).toHaveBeenCalledWith(4002, 'owner_left');
   });
 });

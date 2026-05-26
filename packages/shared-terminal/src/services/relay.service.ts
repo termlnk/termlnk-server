@@ -84,9 +84,17 @@ interface ILocalSession {
 
 interface IRelayPubEnvelope {
   readonly originInstanceId: string;
-  readonly source: 'daemon' | string;
-  readonly target: 'daemon' | 'broadcast' | string;
-  readonly payload: string;
+  /**
+   * When set, this is a control event rather than a frame relay. The
+   * source/target/payload fields are ignored for events. Currently only
+   * `evict_clients` is defined — emitted when a daemon detaches so peer
+   * relay pods drop their local clients too.
+   */
+  readonly event?: 'evict_clients';
+  readonly reason?: string;
+  readonly source?: 'daemon' | string;
+  readonly target?: 'daemon' | 'broadcast' | string;
+  readonly payload?: string;
 }
 
 interface IRelayInboundEnvelope {
@@ -176,6 +184,20 @@ export class RelayService implements IRelayService {
       conn.send(JSON.stringify({ type: 'pong' }));
       return;
     }
+    if (envelope.type === 'shutdown' && mode === 'daemon') {
+      // Explicit owner-initiated shutdown — distinct from a daemon WebSocket
+      // close caused by a transient network blip. Evict every client so the
+      // joiner UI doesn't sit on a "Connected" tab with no data, and forbid
+      // any further client attaches to this bucket by GC'ing it below once
+      // the daemon's own close event lands.
+      this._evictClientsLocally(session, 'owner_left');
+      this._publish(session, {
+        originInstanceId: this._instanceId,
+        event: 'evict_clients',
+        reason: 'owner_left',
+      });
+      return;
+    }
     if (envelope.type === 'revoke' && mode === 'daemon' && envelope.connectionId) {
       const target = session.clients.get(envelope.connectionId);
       if (target) {
@@ -246,6 +268,11 @@ export class RelayService implements IRelayService {
     conn: IRelayConnection
   ): void {
     if (mode === 'daemon' && session.daemon === conn) {
+      // Bare daemon socket close (network blip, server restart, etc.) — do NOT
+      // evict clients here. Owner-initiated tear-down sends an explicit
+      // `{type:'shutdown'}` envelope BEFORE disconnecting (handled in
+      // _handleInbound), which is the path that actually evicts. Without this
+      // separation a flaky daemon link would yank every joiner on every blip.
       session.daemon = null;
     }
     if (mode === 'client') {
@@ -257,6 +284,17 @@ export class RelayService implements IRelayService {
       session.unsubscribeRedis = null;
       this._sessions.delete(sessionKey(session.userId, session.sessionId));
     }
+  }
+
+  private _evictClientsLocally(session: ILocalSession, reason: string): void {
+    for (const client of session.clients.values()) {
+      try {
+        client.conn.close(4002, reason);
+      } catch {
+        // Best-effort: the underlying transport may already be torn down.
+      }
+    }
+    session.clients.clear();
   }
 
   private _getOrCreateSession(userId: string, sessionId: string): ILocalSession {
@@ -301,6 +339,20 @@ export class RelayService implements IRelayService {
       return;
     }
     if (envelope.originInstanceId === this._instanceId) {
+      return;
+    }
+
+    if (envelope.event === 'evict_clients') {
+      this._evictClientsLocally(session, envelope.reason ?? 'owner_left');
+      if (!session.daemon && session.clients.size === 0) {
+        session.unsubscribeRedis?.();
+        session.unsubscribeRedis = null;
+        this._sessions.delete(sessionKey(session.userId, session.sessionId));
+      }
+      return;
+    }
+
+    if (!envelope.target || !envelope.payload) {
       return;
     }
 

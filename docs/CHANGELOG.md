@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.2](https://github.com/termlnk/termlnk-server/compare/v0.2.1...v0.2.2) (2026-05-27)
+
+
+### Bug Fixes
+
+* **relay:** evict joiners only on explicit daemon shutdown, not socket blips ([5db766e](https://github.com/termlnk/termlnk-server/commit/5db766ef7b6866bc0c830282952e80e9da0b8a3f))
+* **sync:** scope HTTP auth to push/pull so WS poke route keeps subprotocol auth ([c19eac2](https://github.com/termlnk/termlnk-server/commit/c19eac213a7c081ddf312a900ccc57d681ea009d))
+
 ## [0.2.1](https://github.com/termlnk/termlnk-server/compare/v0.2.0...v0.2.1) (2026-05-24)
 
 

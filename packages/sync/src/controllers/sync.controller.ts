@@ -26,7 +26,13 @@ export class SyncController {
   ) {}
 
   registerRoutes(router: AppOpenAPI): void {
-    router.use('*', requireAuth(this._jwt));
+    // Scope auth to the HTTP routes only. The sync WS route `/v1/sync/poke` shares the
+    // `/v1/sync` prefix but is mounted separately with its own subprotocol auth
+    // (`wsBearerAuth`). A blanket `use('*')` here flattens to `/v1/sync/*` and would
+    // shadow that upgrade — `requireAuth` reads an `Authorization` header WS upgrades
+    // cannot carry, so it 401s before the subprotocol auth ever runs.
+    router.use('/push', requireAuth(this._jwt));
+    router.use('/pull', requireAuth(this._jwt));
     router
       .openapi(routes.push, this._push)
       .openapi(routes.pull, this._pull);

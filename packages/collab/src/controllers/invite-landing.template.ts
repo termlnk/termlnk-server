@@ -134,19 +134,17 @@ html, body {
 }
 
 .brand .logo {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--green) 100%);
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
-  box-shadow: 0 0 24px rgba(0, 216, 255, 0.4);
+  filter: drop-shadow(0 0 18px rgba(96, 165, 250, 0.35));
 }
 
 .brand .logo svg {
-  width: 16px;
-  height: 16px;
-  color: #03050a;
+  width: 30px;
+  height: 30px;
+  display: block;
 }
 
 .brand .name { background: linear-gradient(120deg, #ffffff, #b4e6ff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }

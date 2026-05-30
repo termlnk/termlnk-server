@@ -14,13 +14,16 @@
  */
 
 import type { ISyncClientsRepository, ISyncClientState } from '../repositories/sync-clients.repository';
-import type { IDBAdaptorService, ITxContext } from '../services/db-adaptor.service';
+import type { ITxContext } from '../services/db-adaptor.service';
 import { and, eq } from 'drizzle-orm';
 import { syncClients } from '../entities';
+import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { pgExec } from './_helpers';
 
 export class PgSyncClientsRepository implements ISyncClientsRepository {
-  constructor(private readonly _adaptor: IDBAdaptorService) {}
+  constructor(
+    @IDBAdaptorService private readonly _adaptor: IDBAdaptorService
+  ) {}
 
   async ensureExists(userId: string, clientId: string, tx: ITxContext): Promise<void> {
     const db = pgExec(this._adaptor, tx);

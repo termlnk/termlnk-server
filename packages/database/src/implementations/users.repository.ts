@@ -14,14 +14,19 @@
  */
 
 import type { IUserInsertParams, IUserRow, IUsersRepository } from '../repositories/users.repository';
-import type { IDBAdaptorService, ITxContext } from '../services/db-adaptor.service';
+import type { ITxContext } from '../services/db-adaptor.service';
 import { eq } from 'drizzle-orm';
 import { users } from '../entities';
 import { UniqueViolationError } from '../repositories/errors';
+import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { isPgUniqueViolation, pgExec } from './_helpers';
 
 export class PgUsersRepository implements IUsersRepository {
-  constructor(private readonly _adaptor: IDBAdaptorService) {}
+  constructor(
+    @IDBAdaptorService private readonly _adaptor: IDBAdaptorService
+  ) {
+
+  }
 
   async insert(values: IUserInsertParams, tx?: ITxContext): Promise<IUserRow> {
     const db = pgExec(this._adaptor, tx);

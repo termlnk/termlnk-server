@@ -13,19 +13,18 @@
  * governing permissions and limitations under the License.
  */
 
-import type {
-  ICollabInviteInsertParams,
-  ICollabInviteRow,
-  ICollabInvitesRepository,
-} from '../repositories/collab-invites.repository';
-import type { IDBAdaptorService, ITxContext } from '../services/db-adaptor.service';
+import type { ICollabInviteInsertParams, ICollabInviteRow, ICollabInvitesRepository } from '../repositories/collab-invites.repository';
+import type { ITxContext } from '../services/db-adaptor.service';
 import { and, desc, eq } from 'drizzle-orm';
 import { collabInvites } from '../entities';
 import { UniqueViolationError } from '../repositories/errors';
+import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { isPgUniqueViolation, pgExec } from './_helpers';
 
 export class PgCollabInvitesRepository implements ICollabInvitesRepository {
-  constructor(private readonly _adaptor: IDBAdaptorService) {}
+  constructor(
+    @IDBAdaptorService private readonly _adaptor: IDBAdaptorService
+  ) {}
 
   async insert(values: ICollabInviteInsertParams, tx?: ITxContext): Promise<void> {
     const db = pgExec(this._adaptor, tx);

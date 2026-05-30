@@ -13,18 +13,17 @@
  * governing permissions and limitations under the License.
  */
 
-import type {
-  IMultiplayerAnnouncementRow,
-  IMultiplayerAnnouncementsRepository,
-  IMultiplayerAnnouncementUpsertParams,
-} from '../repositories/multiplayer-announcements.repository';
-import type { IDBAdaptorService, ITxContext } from '../services/db-adaptor.service';
+import type { IMultiplayerAnnouncementRow, IMultiplayerAnnouncementsRepository, IMultiplayerAnnouncementUpsertParams } from '../repositories/multiplayer-announcements.repository';
+import type { ITxContext } from '../services/db-adaptor.service';
 import { and, desc, eq, gte, lt, ne } from 'drizzle-orm';
 import { multiplayerAnnouncements } from '../entities';
+import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { pgExec } from './_helpers';
 
 export class PgMultiplayerAnnouncementsRepository implements IMultiplayerAnnouncementsRepository {
-  constructor(private readonly _adaptor: IDBAdaptorService) {}
+  constructor(
+    @IDBAdaptorService private readonly _adaptor: IDBAdaptorService
+  ) {}
 
   async upsert(values: IMultiplayerAnnouncementUpsertParams, tx?: ITxContext): Promise<void> {
     const db = pgExec(this._adaptor, tx);

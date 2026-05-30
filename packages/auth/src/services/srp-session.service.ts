@@ -13,9 +13,9 @@
  * governing permissions and limitations under the License.
  */
 
-import type { ISrpService } from '@termlnk-server/crypto';
-import type { IKVStore } from '@termlnk-server/kv';
 import { createIdentifier } from '@termlnk-server/core';
+import { ISrpService } from '@termlnk-server/crypto';
+import { IKVStore } from '@termlnk-server/kv';
 
 const PENDING_TTL_SECONDS = 5 * 60;
 
@@ -53,36 +53,32 @@ export const ISrpSessionService = createIdentifier<ISrpSessionService>('auth.srp
  */
 export class SrpSessionService implements ISrpSessionService {
   constructor(
-    private readonly _srp: ISrpService,
-    private readonly _kv: IKVStore
+    @ISrpService private readonly _srpService: ISrpService,
+    @IKVStore private readonly _kvService: IKVStore
   ) {}
 
   async begin(email: string, srpSalt: string, srpVerifier: string): Promise<{ serverPublicEphemeral: string }> {
-    const ephemeral = this._srp.generateEphemeral(srpVerifier);
+    const ephemeral = this._srpService.generateEphemeral(srpVerifier);
     const stored: IPendingSession = {
       serverSecretEphemeral: ephemeral.serverSecretEphemeral,
       srpVerifier,
       srpSalt,
     };
-    await this._kv.set(pendingKey(email), JSON.stringify(stored), { ttlSeconds: PENDING_TTL_SECONDS });
+    await this._kvService.set(pendingKey(email), JSON.stringify(stored), { ttlSeconds: PENDING_TTL_SECONDS });
     return { serverPublicEphemeral: ephemeral.serverPublicEphemeral };
   }
 
-  async verifyAndConsume(
-    email: string,
-    clientPublicEphemeral: string,
-    clientSessionProof: string
-  ): Promise<{ serverProof: string; sessionKey: string } | null> {
-    const raw = await this._kv.get(pendingKey(email));
+  async verifyAndConsume(email: string, clientPublicEphemeral: string, clientSessionProof: string): Promise<{ serverProof: string; sessionKey: string } | null> {
+    const raw = await this._kvService.get(pendingKey(email));
     if (!raw) {
       return null;
     }
     // one-shot: drop the pending record before consuming so a pipelined duplicate verify can't reuse it.
-    await this._kv.del(pendingKey(email));
+    await this._kvService.del(pendingKey(email));
 
     const stored = JSON.parse(raw) as IPendingSession;
     try {
-      return this._srp.deriveSession(
+      return this._srpService.deriveSession(
         stored.serverSecretEphemeral,
         clientPublicEphemeral,
         stored.srpSalt,

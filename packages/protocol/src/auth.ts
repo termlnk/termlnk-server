@@ -49,6 +49,21 @@ export const tokenPairSchema = z.object({
 });
 export type ITokenPair = z.infer<typeof tokenPairSchema>;
 
+/**
+ * Encryption-password (vault) status — identity and encryption are decoupled.
+ * The single source of truth is the account's SRP credential row (`srp_credentials`):
+ * the encryption password is enrolled as the SRP login password, so `configured`
+ * means such a row exists. Surfaced by GET /auth/me and the Google claim so the
+ * desktop can resolve the vault state (NeedsSetup vs Locked) without guessing.
+ */
+export const e2eStatusSchema = z.object({
+  /** true once the user has set an encryption password (an `srp_credentials` row exists) */
+  configured: z.boolean(),
+  /** present iff configured — the salt needed to re-derive the master key on this device */
+  argon2SaltB64: base64Schema.optional(),
+});
+export type IE2EStatus = z.infer<typeof e2eStatusSchema>;
+
 /* ───── POST /auth/register ───── */
 
 export const registerRequestSchema = z.object({
@@ -116,8 +131,21 @@ export type ISrpVerifyResponse = z.infer<typeof srpVerifyResponseSchema>;
 
 export const meResponseSchema = z.object({
   user: userAccountSchema,
+  /** Vault status so the desktop can resolve NeedsSetup/Locked/Unlocked on restart. */
+  e2e: e2eStatusSchema,
 });
 export type IMeResponse = z.infer<typeof meResponseSchema>;
+
+/* ───── GET /auth/capabilities ─────
+ * Public (no auth). Advertises which optional sign-in methods this deployment
+ * actually mounted, so the desktop doesn't render a "Continue with Google" button
+ * that 404s on a server with Google OAuth disabled. */
+
+export const authCapabilitiesResponseSchema = z.object({
+  /** true when the server has Google OAuth configured + enabled */
+  googleOAuth: z.boolean(),
+});
+export type IAuthCapabilities = z.infer<typeof authCapabilitiesResponseSchema>;
 
 /* ───── POST /auth/refresh ───── */
 
@@ -186,3 +214,49 @@ export const errorResponseSchema = z.object({
   }),
 });
 export type IErrorResponse = z.infer<typeof errorResponseSchema>;
+
+/* ───── Google OAuth ─────
+ * Identity-only sign-in. The browser flow (GET /auth/google/start → Google →
+ * GET /auth/google/callback) is server-driven and ends with a 302 to the
+ * desktop deep link carrying a one-time `relayCode` (no tokens in the URL).
+ * The desktop then POSTs that code to /auth/google/claim for the real bundle.
+ */
+
+/* ───── POST /auth/google/claim ───── */
+export const googleClaimRequestSchema = z.object({
+  /** one-time code delivered to the desktop via the `termlnk://auth/callback` deep link */
+  relayCode: z.string().min(1),
+  /** optional human-readable device label (e.g. `os.hostname()`); shown in the device list */
+  deviceName: z.string().min(1).max(120).optional(),
+});
+export type IGoogleClaimRequest = z.infer<typeof googleClaimRequestSchema>;
+
+export const googleClaimResponseSchema = z
+  .object({
+    user: userAccountSchema,
+    e2e: e2eStatusSchema,
+  })
+  .merge(tokenPairSchema);
+export type IGoogleClaimResponse = z.infer<typeof googleClaimResponseSchema>;
+
+/* ───── POST /auth/e2e/setup ─────
+ * Bearer auth. First-time set of the encryption password for an OAuth account —
+ * enrolls it as the account's SRP credential so it doubles as a login password.
+ * The server stores only salt + verifier (zero-knowledge); returns 409 if a
+ * password is already set (the account unlocks with it instead). */
+
+export const e2eSetupRequestSchema = z.object({
+  argon2SaltB64: base64Schema,
+  /**
+   * SRP6a salt + verifier derived from the encryption password (authKey) and the
+   * argon2 salt. Stored as the account's SRP credential so the encryption password
+   * is also a login password: email + this password authenticates via /auth/srp/*
+   * and derives the same encKey.
+   */
+  srpSalt: hexSchema,
+  srpVerifier: hexSchema,
+});
+export type IE2ESetupRequest = z.infer<typeof e2eSetupRequestSchema>;
+
+export const e2eSetupResponseSchema = e2eStatusSchema;
+export type IE2ESetupResponse = z.infer<typeof e2eSetupResponseSchema>;

@@ -13,18 +13,19 @@
  * governing permissions and limitations under the License.
  */
 
-import type {
-  IRefreshTokenInsertParams,
-  IRefreshTokenRow,
-  IRefreshTokensRepository,
-} from '../repositories/refresh-tokens.repository';
-import type { IDBAdaptorService, ITxContext } from '../services/db-adaptor.service';
+import type { IRefreshTokenInsertParams, IRefreshTokenRow, IRefreshTokensRepository } from '../repositories/refresh-tokens.repository';
+import type { ITxContext } from '../services/db-adaptor.service';
 import { and, desc, eq, gt, isNull } from 'drizzle-orm';
 import { refreshTokens } from '../entities';
+import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { pgExec } from './_helpers';
 
 export class PgRefreshTokensRepository implements IRefreshTokensRepository {
-  constructor(private readonly _adaptor: IDBAdaptorService) {}
+  constructor(
+    @IDBAdaptorService private readonly _adaptor: IDBAdaptorService
+  ) {
+
+  }
 
   async insertReturningJti(values: IRefreshTokenInsertParams, tx?: ITxContext): Promise<{ jti: string }> {
     const db = pgExec(this._adaptor, tx);

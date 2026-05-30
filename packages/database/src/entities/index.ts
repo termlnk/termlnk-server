@@ -28,6 +28,7 @@
 
 export { collabInvites } from './collab-invites';
 export { multiplayerAnnouncements } from './multiplayer-announcements';
+export { oauthIdentities } from './oauth-identities';
 export { pushTokens } from './push-tokens';
 export { refreshTokens } from './refresh-tokens';
 export { srpCredentials } from './srp-credentials';

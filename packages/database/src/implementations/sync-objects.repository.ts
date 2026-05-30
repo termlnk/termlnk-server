@@ -13,18 +13,17 @@
  * governing permissions and limitations under the License.
  */
 
-import type {
-  ISyncObjectRow,
-  ISyncObjectsRepository,
-  ISyncObjectWriteParams,
-} from '../repositories/sync-objects.repository';
-import type { IDBAdaptorService, ITxContext } from '../services/db-adaptor.service';
+import type { ISyncObjectRow, ISyncObjectsRepository, ISyncObjectWriteParams } from '../repositories/sync-objects.repository';
+import type { ITxContext } from '../services/db-adaptor.service';
 import { and, eq, gt } from 'drizzle-orm';
 import { syncObjects } from '../entities';
+import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { pgExec } from './_helpers';
 
 export class PgSyncObjectsRepository implements ISyncObjectsRepository {
-  constructor(private readonly _adaptor: IDBAdaptorService) {}
+  constructor(
+    @IDBAdaptorService private readonly _adaptor: IDBAdaptorService
+  ) {}
 
   async findOne(userId: string, resource: string, entityId: string, tx: ITxContext): Promise<ISyncObjectRow | null> {
     const db = pgExec(this._adaptor, tx);

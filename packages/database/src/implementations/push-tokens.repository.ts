@@ -14,13 +14,16 @@
  */
 
 import type { IPushTokenInsertParams, IPushTokensRepository } from '../repositories/push-tokens.repository';
-import type { IDBAdaptorService, ITxContext } from '../services/db-adaptor.service';
+import type { ITxContext } from '../services/db-adaptor.service';
 import { and, eq } from 'drizzle-orm';
 import { pushTokens } from '../entities';
+import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { pgExec } from './_helpers';
 
 export class PgPushTokensRepository implements IPushTokensRepository {
-  constructor(private readonly _adaptor: IDBAdaptorService) {}
+  constructor(
+    @IDBAdaptorService private readonly _adaptor: IDBAdaptorService
+  ) {}
 
   async deleteByDeviceToken(deviceToken: string, tx: ITxContext): Promise<void> {
     const db = pgExec(this._adaptor, tx);

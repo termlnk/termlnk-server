@@ -31,11 +31,15 @@ export interface ISrpCredentialView {
 
 export interface ISrpCredentialsRepository {
   insert(values: ISrpCredentialInsertParams, tx?: ITxContext): Promise<void>;
+  /** Insert, or replace the SRP triple on `userId` conflict (re-keying / OAuth setup). */
+  upsert(values: ISrpCredentialInsertParams, tx?: ITxContext): Promise<void>;
   /**
    * Resolve the SRP triple for a user identified by email — server-side join so
    * the dialect's join planner can do the lookup in one round trip.
    */
   findByEmail(email: string, tx?: ITxContext): Promise<ISrpCredentialView | null>;
+  /** Direct lookup by userId — used to decide whether a password is already set. */
+  findByUserId(userId: string, tx?: ITxContext): Promise<ISrpCredentialView | null>;
 }
 
 export const ISrpCredentialsRepository = createIdentifier<ISrpCredentialsRepository>('database.srp-credentials-repository');

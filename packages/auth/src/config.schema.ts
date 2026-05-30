@@ -13,6 +13,21 @@
  * governing permissions and limitations under the License.
  */
 
+/**
+ * Google OAuth configuration. When omitted (or `enabled: false`), the
+ * `/google/*` and `/e2e/*` routes are not mounted — the server stays
+ * SRP-password only.
+ */
+export interface IGoogleOAuthPluginConfig {
+  enabled: boolean;
+  clientId: string;
+  clientSecret: string;
+  /** Server callback registered in the Google console (the redirect_uri Google posts back to). */
+  redirectUri: string;
+  /** Desktop deep link the browser is 302'd to after a successful callback, e.g. `termlnk://auth/callback`. */
+  desktopCallbackUrl: string;
+}
+
 export interface IAuthPluginConfig {
   allowOpenRegistration: boolean;
   requireEmailVerification: boolean;
@@ -20,11 +35,14 @@ export interface IAuthPluginConfig {
   routePrefix?: string;
   /** Apply the default `authRateLimit` middleware to /v1/auth/*; default true */
   rateLimit?: boolean;
+  google?: IGoogleOAuthPluginConfig;
 }
 
-export const AUTH_PLUGIN_CONFIG_KEY = 'auth';
+export const AUTH_PLUGIN_CONFIG_KEY = 'auth.config';
 
-export const defaultPluginConfig: Required<Omit<IAuthPluginConfig, 'allowOpenRegistration' | 'requireEmailVerification'>> = {
+export const defaultPluginConfig: IAuthPluginConfig = {
+  allowOpenRegistration: true,
+  requireEmailVerification: true,
   routePrefix: '/v1/auth',
   rateLimit: true,
 };

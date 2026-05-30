@@ -24,19 +24,7 @@
  */
 
 import { createRoute, z } from '@hono/zod-openapi';
-import {
-  deviceListResponseSchema,
-  errorResponseSchema,
-  meResponseSchema,
-  refreshRequestSchema,
-  refreshResponseSchema,
-  registerRequestSchema,
-  registerResponseSchema,
-  srpInitRequestSchema,
-  srpInitResponseSchema,
-  srpVerifyRequestSchema,
-  srpVerifyResponseSchema,
-} from '@termlnk-server/protocol';
+import { authCapabilitiesResponseSchema, deviceListResponseSchema, e2eSetupRequestSchema, e2eSetupResponseSchema, errorResponseSchema, googleClaimRequestSchema, googleClaimResponseSchema, meResponseSchema, refreshRequestSchema, refreshResponseSchema, registerRequestSchema, registerResponseSchema, srpInitRequestSchema, srpInitResponseSchema, srpVerifyRequestSchema, srpVerifyResponseSchema } from '@termlnk-server/protocol';
 
 const tags = ['Auth'];
 
@@ -147,5 +135,50 @@ export const logout = createRoute({
   responses: {
     204: { description: 'All sessions revoked' },
     401: { description: 'Unauthorized', ...errorJson },
+  },
+});
+
+export const capabilities = createRoute({
+  method: 'get',
+  path: '/capabilities',
+  tags,
+  summary: 'Advertise which optional sign-in methods this deployment has enabled',
+  responses: {
+    200: { description: 'Capabilities', content: { 'application/json': { schema: authCapabilitiesResponseSchema } } },
+  },
+});
+
+/* ───── Google OAuth (identity) ─────
+ * GET /google/start and GET /google/callback are browser-navigation endpoints
+ * (302 redirects) registered as plain Hono routes in the controller, not here.
+ * Only the JSON claim below is an OpenAPI route. */
+
+export const googleClaim = createRoute({
+  method: 'post',
+  path: '/google/claim',
+  tags,
+  summary: 'Exchange the one-time relay code (from the deep link) for a token bundle',
+  request: { body: { content: { 'application/json': { schema: googleClaimRequestSchema } } } },
+  responses: {
+    200: { description: 'Logged in; tokens + e2e status', content: { 'application/json': { schema: googleClaimResponseSchema } } },
+    400: { description: 'Invalid request', ...errorJson },
+    401: { description: 'Relay code invalid / expired / replayed', ...errorJson },
+  },
+});
+
+/* ───── E2E encryption password (enrolls an SRP credential) ───── */
+
+export const e2eSetup = createRoute({
+  method: 'post',
+  path: '/e2e/setup',
+  tags,
+  summary: 'Set the encryption password (first time) — enrolls it as an SRP credential',
+  security: [{ Bearer: [] }],
+  request: { body: { content: { 'application/json': { schema: e2eSetupRequestSchema } } } },
+  responses: {
+    200: { description: 'Stored; returns the new e2e status', content: { 'application/json': { schema: e2eSetupResponseSchema } } },
+    400: { description: 'Invalid request', ...errorJson },
+    401: { description: 'Unauthorized', ...errorJson },
+    409: { description: 'A password is already set (unlock with it instead)', ...errorJson },
   },
 });

@@ -34,6 +34,13 @@ export interface IKVStore {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, options?: IKVSetOptions): Promise<void>;
   del(key: string): Promise<number>;
+  /**
+   * Atomically read and delete a key, returning its prior value (or null).
+   * One-shot semantics for single-use tokens (OAuth state / relay codes): unlike
+   * a get-then-del pair, two concurrent callers cannot both observe the value,
+   * so a replayed token is rejected even under a race.
+   */
+  getdel(key: string): Promise<string | null>;
   exists(key: string): Promise<boolean>;
   /** Atomic increment. If `ttlSeconds` is set AND the key is new, applies the TTL. */
   incr(key: string, options?: IKVSetOptions): Promise<number>;

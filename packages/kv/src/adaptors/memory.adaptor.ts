@@ -60,6 +60,16 @@ export class MemoryKVStore extends Disposable implements IKVStore {
     return this._store.delete(key) ? 1 : 0;
   }
 
+  async getdel(key: string): Promise<string | null> {
+    // Single-threaded event loop: read + delete is atomic with respect to other
+    // awaiting callers, matching Redis GETDEL one-shot semantics.
+    const value = await this.get(key);
+    if (value !== null) {
+      this._store.delete(key);
+    }
+    return value;
+  }
+
   async exists(key: string): Promise<boolean> {
     return (await this.get(key)) !== null;
   }

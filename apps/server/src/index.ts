@@ -128,6 +128,7 @@ async function main(): Promise<void> {
     [AuthPlugin, {
       allowOpenRegistration: config.allowOpenRegistration,
       requireEmailVerification: config.requireEmailVerification,
+      google: config.google ?? undefined,
     }],
     [SyncPlugin, {}],
     [PushPlugin, {}],

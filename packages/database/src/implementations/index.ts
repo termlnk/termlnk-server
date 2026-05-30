@@ -15,6 +15,7 @@
 
 export { PgCollabInvitesRepository } from './collab-invites.repository';
 export { PgMultiplayerAnnouncementsRepository } from './multiplayer-announcements.repository';
+export { PgOAuthIdentitiesRepository } from './oauth-identities.repository';
 export { PgPushTokensRepository } from './push-tokens.repository';
 export { PgRefreshTokensRepository } from './refresh-tokens.repository';
 export { PgSrpCredentialsRepository } from './srp-credentials.repository';

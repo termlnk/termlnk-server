@@ -51,11 +51,28 @@ const envSchema = z.object({
   RELAY_CLAIM_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(5 * 60),
   ALLOW_OPEN_REGISTRATION: booleanLike.default(true),
   REQUIRE_EMAIL_VERIFICATION: booleanLike.default(false),
+  GOOGLE_OAUTH_ENABLED: booleanLike.default(false),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_REDIRECT_URI: z.string().url().optional(),
+  // Custom URI scheme — NOT validated as a URL (z.url() rejects `termlnk://...`).
+  GOOGLE_DESKTOP_CALLBACK_URL: z.string().min(1).default('termlnk://auth/callback'),
   CORS_ORIGINS: z
     .string()
     .default('*')
     .transform((v) => (v === '*' ? ['*'] : v.split(',').map((s) => s.trim()).filter(Boolean))),
-});
+}).refine(
+  (v) => !v.GOOGLE_OAUTH_ENABLED || (!!v.GOOGLE_CLIENT_ID && !!v.GOOGLE_CLIENT_SECRET && !!v.GOOGLE_REDIRECT_URI),
+  { message: 'GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI are required when GOOGLE_OAUTH_ENABLED is true' }
+);
+
+export interface IGoogleOAuthRuntimeConfig {
+  readonly enabled: true;
+  readonly clientId: string;
+  readonly clientSecret: string;
+  readonly redirectUri: string;
+  readonly desktopCallbackUrl: string;
+}
 
 export interface IRuntimeConfig {
   readonly databaseUrl: string;
@@ -69,6 +86,7 @@ export interface IRuntimeConfig {
   readonly relayClaimTokenTtlSeconds: number;
   readonly allowOpenRegistration: boolean;
   readonly requireEmailVerification: boolean;
+  readonly google: IGoogleOAuthRuntimeConfig | null;
   readonly corsOrigins: readonly string[];
 }
 
@@ -93,6 +111,15 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
     relayClaimTokenTtlSeconds: v.RELAY_CLAIM_TOKEN_TTL_SECONDS,
     allowOpenRegistration: v.ALLOW_OPEN_REGISTRATION,
     requireEmailVerification: v.REQUIRE_EMAIL_VERIFICATION,
+    google: v.GOOGLE_OAUTH_ENABLED
+      ? {
+          enabled: true,
+          clientId: v.GOOGLE_CLIENT_ID!,
+          clientSecret: v.GOOGLE_CLIENT_SECRET!,
+          redirectUri: v.GOOGLE_REDIRECT_URI!,
+          desktopCallbackUrl: v.GOOGLE_DESKTOP_CALLBACK_URL,
+        }
+      : null,
     corsOrigins: v.CORS_ORIGINS,
   };
 }

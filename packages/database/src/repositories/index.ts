@@ -22,6 +22,7 @@
 export type { ICollabInviteInsertParams, ICollabInviteRow } from './collab-invites.repository';
 
 export { ICollabInvitesRepository } from './collab-invites.repository';
+
 export { UniqueViolationError } from './errors';
 
 export type {
@@ -29,6 +30,9 @@ export type {
   IMultiplayerAnnouncementUpsertParams,
 } from './multiplayer-announcements.repository';
 export { IMultiplayerAnnouncementsRepository } from './multiplayer-announcements.repository';
+
+export type { IOAuthIdentityRow, IOAuthIdentityUpsertParams } from './oauth-identities.repository';
+export { IOAuthIdentitiesRepository } from './oauth-identities.repository';
 
 export type { IPushTokenInsertParams } from './push-tokens.repository';
 export { IPushTokensRepository } from './push-tokens.repository';

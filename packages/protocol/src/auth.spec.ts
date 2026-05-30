@@ -104,6 +104,7 @@ describe('auth schemas', () => {
         createdAt: '2026-05-09T00:00:00Z',
         updatedAt: '2026-05-09T00:00:00Z',
       },
+      e2e: { configured: false },
     });
     expect(ok.success).toBe(true);
     expect(meResponseSchema.safeParse({}).success).toBe(false);

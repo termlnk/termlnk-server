@@ -61,6 +61,11 @@ export class IoredisKVStore extends Disposable implements IKVStore {
     return this._client.del(key);
   }
 
+  async getdel(key: string): Promise<string | null> {
+    // GETDEL is atomic server-side (Redis >= 6.2).
+    return this._client.getdel(key);
+  }
+
   async exists(key: string): Promise<boolean> {
     return (await this._client.exists(key)) === 1;
   }

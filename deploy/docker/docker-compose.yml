@@ -74,6 +74,15 @@ services:
       ALLOW_OPEN_REGISTRATION: ${ALLOW_OPEN_REGISTRATION:-true}
       REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-false}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      # Google OAuth (optional). The server treats empty values as unset, so the
+      # blank defaults below are safe when disabled. To enable: set
+      # GOOGLE_OAUTH_ENABLED=true plus client id / secret / redirect URI in .env.
+      GOOGLE_OAUTH_ENABLED: ${GOOGLE_OAUTH_ENABLED:-false}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      GOOGLE_DESKTOP_CALLBACK_URL: ${GOOGLE_DESKTOP_CALLBACK_URL:-termlnk://auth/callback}
+      RELAY_CLAIM_TOKEN_TTL_SECONDS: ${RELAY_CLAIM_TOKEN_TTL_SECONDS:-300}
     expose:
       - '4000'
     ports:

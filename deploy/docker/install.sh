@@ -193,9 +193,13 @@ JWT_REFRESH_SECRET="$(gen_secret)"
 if [ -n "$DOMAIN" ]; then
   server_bind=127.0.0.1
   cors_origins="https://$DOMAIN"
+  # Pre-fill the public callback so enabling OAuth later is just client id/secret
+  # + flipping ENABLED to true. Still disabled by default.
+  google_redirect_uri="https://$DOMAIN/auth/google/callback"
 else
   server_bind=0.0.0.0
   cors_origins='*'
+  google_redirect_uri=
 fi
 
 umask 077
@@ -225,6 +229,15 @@ JWT_REFRESH_TTL_SECONDS=2592000
 ALLOW_OPEN_REGISTRATION=true
 REQUIRE_EMAIL_VERIFICATION=false
 CORS_ORIGINS=$cors_origins
+
+# Google OAuth (optional) — disabled. To enable: set client id/secret, ensure
+# GOOGLE_REDIRECT_URI matches an Authorized redirect URI in your Google OAuth
+# client, flip GOOGLE_OAUTH_ENABLED to true, then ./deploy.sh restart.
+GOOGLE_OAUTH_ENABLED=false
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=$google_redirect_uri
+GOOGLE_DESKTOP_CALLBACK_URL=termlnk://auth/callback
 EOF
 chmod 600 .env
 ok "Wrote $INSTALL_DIR/.env (secrets generated)."

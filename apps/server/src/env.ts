@@ -32,6 +32,16 @@ const secret = z
   .min(32, 'must be at least 32 characters of entropy')
   .refine((v) => !v.includes('changeme'), 'placeholder secrets are not allowed');
 
+/**
+ * Treat an empty-string env var as "unset". Docker Compose `${VAR:-}`
+ * interpolation injects "" for any variable absent from .env; without this an
+ * empty GOOGLE_REDIRECT_URI would fail `.url()` and crash boot even when OAuth
+ * is disabled. Coerce "" → undefined so `.optional()` applies as intended.
+ */
+function optionalNonEmpty<T extends z.ZodType>(inner: T) {
+  return z.preprocess((v) => (v === '' ? undefined : v), inner.optional());
+}
+
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1).default('postgres://termlnk:termlnk@localhost:5432/termlnk_server'),
   REDIS_URL: z.string().min(1).default('redis://localhost:6379'),
@@ -52,9 +62,9 @@ const envSchema = z.object({
   ALLOW_OPEN_REGISTRATION: booleanLike.default(true),
   REQUIRE_EMAIL_VERIFICATION: booleanLike.default(false),
   GOOGLE_OAUTH_ENABLED: booleanLike.default(false),
-  GOOGLE_CLIENT_ID: z.string().optional(),
-  GOOGLE_CLIENT_SECRET: z.string().optional(),
-  GOOGLE_REDIRECT_URI: z.string().url().optional(),
+  GOOGLE_CLIENT_ID: optionalNonEmpty(z.string()),
+  GOOGLE_CLIENT_SECRET: optionalNonEmpty(z.string()),
+  GOOGLE_REDIRECT_URI: optionalNonEmpty(z.string().url()),
   // Custom URI scheme — NOT validated as a URL (z.url() rejects `termlnk://...`).
   GOOGLE_DESKTOP_CALLBACK_URL: z.string().min(1).default('termlnk://auth/callback'),
   CORS_ORIGINS: z

@@ -123,12 +123,12 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
     requireEmailVerification: v.REQUIRE_EMAIL_VERIFICATION,
     google: v.GOOGLE_OAUTH_ENABLED
       ? {
-          enabled: true,
-          clientId: v.GOOGLE_CLIENT_ID!,
-          clientSecret: v.GOOGLE_CLIENT_SECRET!,
-          redirectUri: v.GOOGLE_REDIRECT_URI!,
-          desktopCallbackUrl: v.GOOGLE_DESKTOP_CALLBACK_URL,
-        }
+        enabled: true,
+        clientId: v.GOOGLE_CLIENT_ID!,
+        clientSecret: v.GOOGLE_CLIENT_SECRET!,
+        redirectUri: v.GOOGLE_REDIRECT_URI!,
+        desktopCallbackUrl: v.GOOGLE_DESKTOP_CALLBACK_URL,
+      }
       : null,
     corsOrigins: v.CORS_ORIGINS,
   };

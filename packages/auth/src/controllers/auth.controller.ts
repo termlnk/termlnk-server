@@ -22,9 +22,11 @@ import { HttpError, requireAuth } from '@termlnk-server/rpc-server';
 import { AUTH_PLUGIN_CONFIG_KEY } from '../config.schema';
 import { IAuthService } from '../services/auth.service';
 import { IGoogleOAuthService } from '../services/google-oauth.service';
-import { IOAuthFlowStore } from '../services/oauth-flow-store.service';
+import { randomBase64Url } from '../services/oauth-encoding';
+import { IOAuthFlowStore, WEB_RELAY_TTL_SECONDS } from '../services/oauth-flow-store.service';
 import { ISrpSessionService } from '../services/srp-session.service';
 import * as routes from './auth.routes';
+import { OAuthLandingController } from './oauth-landing.controller';
 
 function deviceMeta(c: Context): { deviceName: string | null; userAgent: string | null } {
   return { deviceName: null, userAgent: c.req.header('User-Agent') ?? null };
@@ -82,32 +84,92 @@ export class AuthController extends Disposable {
     const auth = requireAuth(this._jwt);
     router.use('/e2e/setup', auth);
 
-    // Browser-navigation endpoints (302) — plain Hono routes, not OpenAPI JSON.
+    // Completion bridge pages. Desktop hands the relay code (success) or the error
+    // (failure) to the `termlnk://` deep link; the web popup just shows "you can
+    // close this" because the client polls the outcome out-of-band (see /google/web/*).
+    const landing = new OAuthLandingController({ desktopCallbackUrl });
+
+    // Desktop browser-navigation start: a 302 hop into Google. Web clients use
+    // /google/web/begin instead (it returns the URL as JSON so the client can
+    // open it itself and hold a device code for polling).
     router.get('/google/start', async (c) => {
       const session = await google.createAuthSession();
-      await flow.savePending(session.state, session.codeVerifier);
+      await flow.savePending(session.state, { isWeb: false, codeVerifier: session.codeVerifier });
       return c.redirect(session.authorizeUrl);
+    });
+
+    // Web begin: the self-hosted client's backend (BFF) calls this server-to-server.
+    // We can't know the client's domain (Google forbids arbitrary redirect URIs),
+    // so instead of redirecting back we mint a device code; the callback maps the
+    // relay code to it and the client polls /google/web/poll for it.
+    router.post('/google/web/begin', async (c) => {
+      const session = await google.createAuthSession();
+      const deviceCode = randomBase64Url(32);
+      await flow.savePending(session.state, { isWeb: true, codeVerifier: session.codeVerifier, deviceCode });
+      return c.json({ authorizeUrl: session.authorizeUrl, deviceCode }, 200);
+    });
+
+    // Web poll: BFF exchanges its device code for the relay code once the popup
+    // has completed. One-shot — a consumed or unknown device code reads pending.
+    router.post('/google/web/poll', async (c) => {
+      const body = await c.req.json().catch(() => null) as { deviceCode?: unknown } | null;
+      const deviceCode = body?.deviceCode;
+      if (typeof deviceCode !== 'string' || deviceCode.length === 0) {
+        return c.json({ error: 'invalid_request' }, 400);
+      }
+      // Three terminal states for the client's backend: keep polling, claim this
+      // relay code, or stop because the flow failed.
+      const outcome = await flow.consumeWebOutcome(deviceCode);
+      if (outcome === null) {
+        return c.json({ status: 'pending' }, 200);
+      }
+      if (outcome.status === 'error') {
+        return c.json({ status: 'error', error: outcome.error }, 200);
+      }
+      return c.json({ status: 'success', relayCode: outcome.relayCode }, 200);
     });
 
     router.get('/google/callback', async (c) => {
       const code = c.req.query('code');
       const state = c.req.query('state');
       const oauthError = c.req.query('error');
-      if (oauthError || !code || !state) {
-        return c.redirect(`${desktopCallbackUrl}?error=${encodeURIComponent(oauthError ?? 'invalid_request')}`);
+
+      // Without state the pending record can't be resolved, so the client kind is
+      // unknown — render the desktop error page (it also relays the error to the deep link).
+      if (!state) {
+        return landing.renderError(oauthError ?? 'invalid_request');
       }
-      const codeVerifier = await flow.consumePending(state);
-      if (!codeVerifier) {
-        return c.redirect(`${desktopCallbackUrl}?error=invalid_state`);
+      const pending = await flow.consumePending(state);
+      if (!pending) {
+        return landing.renderError('invalid_state');
+      }
+
+      // One failure path for both client kinds: a web client gets a terminal error
+      // parked for its poll; a desktop client gets it handed back via the deep link.
+      const fail = async (errorCode: string): Promise<Response> => {
+        if (pending.isWeb) {
+          await flow.saveWebOutcome(pending.deviceCode, { status: 'error', error: errorCode });
+          return landing.renderWebError(errorCode);
+        }
+        return landing.renderError(errorCode);
+      };
+
+      if (oauthError || !code) {
+        return fail(oauthError ?? 'invalid_request');
       }
       try {
-        const identity = await google.exchangeCode(code, codeVerifier);
+        const identity = await google.exchangeCode(code, pending.codeVerifier);
         const user = await this._authService.resolveGoogleIdentity(identity);
+        if (pending.isWeb) {
+          const relayCode = await flow.saveRelay({ userId: user.id }, WEB_RELAY_TTL_SECONDS);
+          await flow.saveWebOutcome(pending.deviceCode, { status: 'success', relayCode });
+          return landing.renderWebComplete();
+        }
         const relayCode = await flow.saveRelay({ userId: user.id });
-        return c.redirect(`${desktopCallbackUrl}?relayCode=${encodeURIComponent(relayCode)}`);
+        return landing.renderSuccess(relayCode);
       } catch (err) {
         const errCode = err instanceof HttpError ? err.code : 'server_error';
-        return c.redirect(`${desktopCallbackUrl}?error=${encodeURIComponent(errCode)}`);
+        return fail(errCode);
       }
     });
 

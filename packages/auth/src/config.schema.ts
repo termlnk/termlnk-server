@@ -24,7 +24,7 @@ export interface IGoogleOAuthPluginConfig {
   clientSecret: string;
   /** Server callback registered in the Google console (the redirect_uri Google posts back to). */
   redirectUri: string;
-  /** Desktop deep link the browser is 302'd to after a successful callback, e.g. `termlnk://auth/callback`. */
+  /** Desktop deep link the browser is handed off to after the callback, e.g. `termlnk://auth/callback`. */
   desktopCallbackUrl: string;
 }
 

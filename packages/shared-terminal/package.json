@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/shared-terminal",
   "type": "module",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "Shared-terminal relay (Redis pub/sub) + WS controller. Node-only (uses @hono/node-server upgradeWebSocket).",
   "license": "PolyForm-Noncommercial-1.0.0",

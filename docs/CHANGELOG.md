@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.3](https://github.com/termlnk/termlnk-server/compare/v0.2.2...v0.2.3) (2026-05-31)
+
+
+### Features
+
+* **auth:** add Google OAuth sign-in with decoupled E2E vault ([a868b09](https://github.com/termlnk/termlnk-server/commit/a868b096021b27d5dbb0cd10a717cba2a7de7da6))
+* **deploy:** wire Google OAuth env through docker and fly ([e393101](https://github.com/termlnk/termlnk-server/commit/e393101eb10ff2cf5f6b07d9c3c98c5ea7438478))
+
 ## [0.2.2](https://github.com/termlnk/termlnk-server/compare/v0.2.1...v0.2.2) (2026-05-27)
 
 

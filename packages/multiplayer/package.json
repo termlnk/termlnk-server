@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/multiplayer",
   "type": "module",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "description": "Multiplayer plugin — same-account device announcements (PG + Redis pubsub) + WebRTC signalling.",
   "license": "PolyForm-Noncommercial-1.0.0",

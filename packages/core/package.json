@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/core",
   "type": "module",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "description": "Core runtime — DI + Plugin + Lifecycle + Config + Log. Edge-safe (no Node API surface).",
   "license": "PolyForm-Noncommercial-1.0.0",

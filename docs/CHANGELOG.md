@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/termlnk/termlnk-server/compare/v0.2.3...v0.2.4) (2026-05-31)
+
+
+### Features
+
+* **auth:** add Google OAuth web sign-in flow and completion landing pages ([eb3d0f5](https://github.com/termlnk/termlnk-server/commit/eb3d0f5f8a80bedd5c593627cab189d8c7e4bc05))
+
 ## [0.2.3](https://github.com/termlnk/termlnk-server/compare/v0.2.2...v0.2.3) (2026-05-31)
 
 

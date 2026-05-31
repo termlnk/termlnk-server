@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/push",
   "type": "module",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "description": "Push token registration (Expo / APNs / FCM). Storage only — actual delivery to push providers is out-of-scope for this snapshot.",
   "license": "PolyForm-Noncommercial-1.0.0",

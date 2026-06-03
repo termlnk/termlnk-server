@@ -14,7 +14,7 @@
  */
 
 import type { IRelayConnection } from './relay.service';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RelayService } from './relay.service';
 
 class FakeConn implements IRelayConnection {
@@ -296,5 +296,111 @@ describe('relayService — cross-instance via shared in-memory Redis stub', () =
     await new Promise((r) => setImmediate(r));
 
     expect(clientRemote.close).toHaveBeenCalledWith(4002, 'owner_left');
+  });
+
+  describe('peer_left across instances', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('delivers peer_left to a daemon on a peer instance after the grace window', async () => {
+      vi.useFakeTimers();
+      const bus = new FakeBus();
+      const relayA = new RelayService(makeFakeRedis(bus) as never);
+      const relayB = new RelayService(makeFakeRedis(bus) as never);
+
+      const daemon = new FakeConn();
+      const client = new FakeConn();
+      relayA.attach(daemon, { userId: 'u1', mode: 'daemon', sessionId: 's1' });
+      const clientHandle = relayB.attach(client, { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'remote' });
+
+      clientHandle.onClose();
+      await vi.advanceTimersByTimeAsync(5000);
+      await Promise.resolve();
+
+      expect(daemon.sent.at(-1)).toBe(JSON.stringify({ type: 'peer_left', connectionId: 'remote' }));
+    });
+
+    it('cancels peer_left across instances when the client re-attaches on a peer instance', async () => {
+      vi.useFakeTimers();
+      const bus = new FakeBus();
+      const relayA = new RelayService(makeFakeRedis(bus) as never);
+      const relayB = new RelayService(makeFakeRedis(bus) as never);
+
+      const daemon = new FakeConn();
+      relayA.attach(daemon, { userId: 'u1', mode: 'daemon', sessionId: 's1' });
+      // Client attaches+closes on A (A arms peer_left), then reconnects on B —
+      // B broadcasts peer_rejoined, which must cancel A's pending timer.
+      const onA = relayA.attach(new FakeConn(), { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'roamer' });
+      onA.onClose();
+      relayB.attach(new FakeConn(), { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'roamer' });
+      await Promise.resolve();
+
+      await vi.advanceTimersByTimeAsync(5000);
+      await Promise.resolve();
+
+      expect(daemon.sent.some((s) => s.includes('"peer_left"'))).toBe(false);
+    });
+  });
+});
+
+describe('relayService — peer_left debounce (single instance)', () => {
+  let relay: RelayService;
+
+  beforeEach(() => {
+    relay = new RelayService(null);
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('reports peer_left to the daemon only after the grace window elapses', () => {
+    const daemon = new FakeConn();
+    const client = new FakeConn();
+    relay.attach(daemon, { userId: 'u1', mode: 'daemon', sessionId: 's1' });
+    const clientHandle = relay.attach(client, { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'c1' });
+
+    const sentBefore = daemon.sent.length;
+    clientHandle.onClose();
+    // No immediate notification — the notice is held for the grace window.
+    expect(daemon.sent.length).toBe(sentBefore);
+
+    vi.advanceTimersByTime(5000);
+    expect(daemon.sent.at(-1)).toBe(JSON.stringify({ type: 'peer_left', connectionId: 'c1' }));
+  });
+
+  it('cancels peer_left when the same connectionId re-attaches within the grace window', () => {
+    const daemon = new FakeConn();
+    relay.attach(daemon, { userId: 'u1', mode: 'daemon', sessionId: 's1' });
+    const clientHandle = relay.attach(new FakeConn(), { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'c1' });
+
+    clientHandle.onClose();
+    vi.advanceTimersByTime(2000);
+    // Transparent reconnect re-attaches the same connectionId before grace ends.
+    relay.attach(new FakeConn(), { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'c1' });
+    vi.advanceTimersByTime(5000);
+
+    expect(daemon.sent.some((s) => s.includes('"peer_left"'))).toBe(false);
+  });
+
+  it('does not throw when a client with no daemon closes and the grace window fires', () => {
+    const clientHandle = relay.attach(new FakeConn(), { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'c1' });
+    clientHandle.onClose();
+    expect(() => vi.advanceTimersByTime(5000)).not.toThrow();
+  });
+
+  it('owner shutdown cancels armed peer_left timers (no stale peer_left after evict)', () => {
+    const daemon = new FakeConn();
+    const daemonHandle = relay.attach(daemon, { userId: 'u1', mode: 'daemon', sessionId: 's1' });
+    const clientHandle = relay.attach(new FakeConn(), { userId: 'u1', mode: 'client', sessionId: 's1', connectionId: 'c1' });
+
+    clientHandle.onClose(); // arms a peer_left for c1
+    daemonHandle.onMessage(JSON.stringify({ type: 'shutdown' })); // evicts + must drop armed timers
+    const sentBefore = daemon.sent.length;
+    vi.advanceTimersByTime(5000);
+
+    expect(daemon.sent.slice(sentBefore).some((s) => s.includes('"peer_left"'))).toBe(false);
   });
 });

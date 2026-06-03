@@ -27,6 +27,17 @@
 import type Redis from 'ioredis';
 import { createIdentifier } from '@termlnk-server/core';
 
+/**
+ * Grace window before a closed client connection is reported to the daemon as
+ * `peer_left`. The joiner-side RelayTransport reconnects transparently on a
+ * transient ws blip WITHOUT re-sending client_join, so an immediate peer_left
+ * would evict a joiner that is about to reconnect. We hold the notice for this
+ * window and cancel it if the same connectionId re-attaches — locally, or
+ * across pods via a `peer_rejoined` pub/sub event. Sized at/above the client's
+ * first reconnect backoff so a normal blip is always covered.
+ */
+const PEER_LEFT_GRACE_MS = 5000;
+
 function createSubscriber(parent: Redis, channel: string, handler: (message: string) => void): () => void {
   const sub = parent.duplicate();
   void sub.subscribe(channel).catch(() => undefined);
@@ -79,6 +90,8 @@ interface ILocalSession {
   readonly sessionId: string;
   daemon: IRelayConnection | null;
   readonly clients: Map<string, ILocalClient>;
+  /** Per-connectionId debounce timers for not-yet-emitted `peer_left` notices. */
+  readonly pendingLeaves: Map<string, ReturnType<typeof setTimeout>>;
   unsubscribeRedis: (() => void) | null;
 }
 
@@ -86,12 +99,17 @@ interface IRelayPubEnvelope {
   readonly originInstanceId: string;
   /**
    * When set, this is a control event rather than a frame relay. The
-   * source/target/payload fields are ignored for events. Currently only
-   * `evict_clients` is defined — emitted when a daemon detaches so peer
-   * relay pods drop their local clients too.
+   * source/target/payload fields are ignored for events.
+   *   - `evict_clients`: a daemon detached/shutdown — peer pods drop local clients.
+   *   - `peer_left`: a client connection closed — the pod holding the daemon
+   *     forwards it to the daemon (carries `connectionId`).
+   *   - `peer_rejoined`: a client re-attached within the grace window — peer
+   *     pods cancel any pending `peer_left` for that `connectionId`.
    */
-  readonly event?: 'evict_clients';
+  readonly event?: 'evict_clients' | 'peer_left' | 'peer_rejoined';
   readonly reason?: string;
+  /** The client connectionId carried by `peer_left` / `peer_rejoined` events. */
+  readonly connectionId?: string;
   readonly source?: 'daemon' | string;
   readonly target?: 'daemon' | 'broadcast' | string;
   readonly payload?: string;
@@ -156,6 +174,15 @@ export class RelayService implements IRelayService {
     } else {
       myConnectionId = options.connectionId ?? randomBase64Url(16);
       session.clients.set(myConnectionId, { connectionId: myConnectionId, conn });
+      // A reconnect within the grace window must cancel the pending peer_left
+      // so the daemon never reads a transient blip as a departure. Cancel
+      // locally and broadcast so the pod that armed it (if different) cancels too.
+      this._cancelPendingLeave(session, myConnectionId);
+      this._publish(session, {
+        originInstanceId: this._instanceId,
+        event: 'peer_rejoined',
+        connectionId: myConnectionId,
+      });
       conn.send(JSON.stringify({ type: 'ready', connectionId: myConnectionId }));
     }
 
@@ -277,13 +304,67 @@ export class RelayService implements IRelayService {
     }
     if (mode === 'client') {
       session.clients.delete(myConnectionId);
+      // Defer the daemon notification: the joiner-side transport reconnects
+      // transparently (no fresh client_join), so a transient blip must not read
+      // as a departure. _schedulePeerLeft holds the notice for a grace window;
+      // a re-attach of the same connectionId cancels it.
+      this._schedulePeerLeft(session, myConnectionId);
     }
 
-    if (!session.daemon && session.clients.size === 0) {
-      session.unsubscribeRedis?.();
-      session.unsubscribeRedis = null;
-      this._sessions.delete(sessionKey(session.userId, session.sessionId));
+    this._maybeGcSession(session);
+  }
+
+  /**
+   * Arm a debounced `peer_left` for a closed client connection. Fires after
+   * PEER_LEFT_GRACE_MS unless cancelled by a re-attach. Replaces any existing
+   * timer for the same connectionId so a duplicate close cannot stack them.
+   */
+  private _schedulePeerLeft(session: ILocalSession, connectionId: string): void {
+    this._cancelPendingLeave(session, connectionId);
+    const timer = setTimeout(() => {
+      session.pendingLeaves.delete(connectionId);
+      this._emitPeerLeft(session, connectionId);
+      this._maybeGcSession(session);
+    }, PEER_LEFT_GRACE_MS);
+    session.pendingLeaves.set(connectionId, timer);
+  }
+
+  private _cancelPendingLeave(session: ILocalSession, connectionId: string): void {
+    const timer = session.pendingLeaves.get(connectionId);
+    if (timer === undefined) {
+      return;
     }
+    clearTimeout(timer);
+    session.pendingLeaves.delete(connectionId);
+  }
+
+  /**
+   * Tell the daemon a client departed. Delivered locally when the daemon shares
+   * this pod; otherwise published so the pod holding the daemon forwards it
+   * (mirrors the broadcast / evict_clients fan-out).
+   */
+  private _emitPeerLeft(session: ILocalSession, connectionId: string): void {
+    if (session.daemon) {
+      session.daemon.send(JSON.stringify({ type: 'peer_left', connectionId }));
+    }
+    this._publish(session, {
+      originInstanceId: this._instanceId,
+      event: 'peer_left',
+      connectionId,
+    });
+  }
+
+  /**
+   * GC the session once nothing references it. Pending peer_left timers count
+   * as references — they need the session live to deliver/forward on fire.
+   */
+  private _maybeGcSession(session: ILocalSession): void {
+    if (session.daemon || session.clients.size > 0 || session.pendingLeaves.size > 0) {
+      return;
+    }
+    session.unsubscribeRedis?.();
+    session.unsubscribeRedis = null;
+    this._sessions.delete(sessionKey(session.userId, session.sessionId));
   }
 
   private _evictClientsLocally(session: ILocalSession, reason: string): void {
@@ -295,6 +376,12 @@ export class RelayService implements IRelayService {
       }
     }
     session.clients.clear();
+    // Owner is gone — armed peer_left timers are moot. Drop them so they neither
+    // fire stale notices nor keep the session pinned in _maybeGcSession.
+    for (const timer of session.pendingLeaves.values()) {
+      clearTimeout(timer);
+    }
+    session.pendingLeaves.clear();
   }
 
   private _getOrCreateSession(userId: string, sessionId: string): ILocalSession {
@@ -308,6 +395,7 @@ export class RelayService implements IRelayService {
       sessionId,
       daemon: null,
       clients: new Map(),
+      pendingLeaves: new Map(),
       unsubscribeRedis: null,
     };
     this._sessions.set(key, created);
@@ -344,10 +432,24 @@ export class RelayService implements IRelayService {
 
     if (envelope.event === 'evict_clients') {
       this._evictClientsLocally(session, envelope.reason ?? 'owner_left');
-      if (!session.daemon && session.clients.size === 0) {
-        session.unsubscribeRedis?.();
-        session.unsubscribeRedis = null;
-        this._sessions.delete(sessionKey(session.userId, session.sessionId));
+      this._maybeGcSession(session);
+      return;
+    }
+    if (envelope.event === 'peer_left') {
+      // Only the pod holding the daemon delivers; others have no daemon and ignore.
+      if (session.daemon && envelope.connectionId) {
+        session.daemon.send(JSON.stringify({ type: 'peer_left', connectionId: envelope.connectionId }));
+      }
+      return;
+    }
+    if (envelope.event === 'peer_rejoined') {
+      // A re-attach landed on a peer pod — cancel any pending peer_left we armed,
+      // then GC: cancelling may have emptied this pod's last reference to the
+      // session (no local connection, no pending timer), and only this path
+      // would otherwise leave the session + its Redis subscription stranded.
+      if (envelope.connectionId) {
+        this._cancelPendingLeave(session, envelope.connectionId);
+        this._maybeGcSession(session);
       }
       return;
     }

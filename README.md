@@ -33,9 +33,10 @@ termlnk-server/
 │   ├── auth/                         SRP6a + JWT plugin
 │   ├── sync/                         Sync engine + WS poke auth helper
 │   ├── sync-broadcast/               Redis pub/sub adapter for cross-instance sync events
-│   ├── collab/                       Invite lifecycle: create / revoke / list / claim
-│   ├── shared-terminal/              `/v1/shared-terminal` WS relay (PTY fan-out, E2EE pipe)
-│   ├── multiplayer/                  `/v1/multiplayer` announcements (REST) + signalling (WS)
+│   ├── shared-terminal/              Shared-session domain (one plugin, split by service):
+│   │                                 relay WS (`/v1/shared-terminal`), collab invites
+│   │                                 (`/v1/collab`, `/s`), multiplayer announce + WebRTC
+│   │                                 signalling (`/v1/multiplayer`)
 │   ├── push/                         Push-notification device registry
 │   ├── crypto/                       JWT, HMAC, SRP service interfaces + implementations
 │   ├── database/                     Drizzle schema (PG) + repository interfaces + node-pg adaptor
@@ -70,14 +71,14 @@ termlnk-server/
 | `/v1/auth/logout` | POST | auth | Bearer |
 | `/v1/sync/push` + `/sync/pull` | POST | sync | Bearer |
 | `/v1/sync/poke` | WS | sync | Bearer-via-Subprotocol |
-| `/v1/collab/invite` | POST/GET | collab | Bearer |
-| `/v1/collab/invite/:id/revoke` | POST | collab | Bearer |
-| `/v1/collab/invite/:id/claim` | POST | collab | Bearer (joiner) |
+| `/v1/collab/invite` | POST/GET | shared-terminal | Bearer |
+| `/v1/collab/invite/:id/revoke` | POST | shared-terminal | Bearer |
+| `/v1/collab/invite/:id/claim` | POST | shared-terminal | Bearer (joiner) |
 | `/v1/shared-terminal/` | WS | shared-terminal | Bearer-via-Subprotocol |
-| `/v1/multiplayer/announce` | POST | multiplayer | Bearer |
-| `/v1/multiplayer/announce/:sid` | DELETE | multiplayer | Bearer + `x-termlnk-device-id` |
-| `/v1/multiplayer/sessions` | GET | multiplayer | Bearer |
-| `/v1/multiplayer/signal` | WS | multiplayer | Bearer-via-Subprotocol |
+| `/v1/multiplayer/announce` | POST | shared-terminal | Bearer |
+| `/v1/multiplayer/announce/:sid` | DELETE | shared-terminal | Bearer + `x-termlnk-device-id` |
+| `/v1/multiplayer/sessions` | GET | shared-terminal | Bearer |
+| `/v1/multiplayer/signal` | WS | shared-terminal | Bearer-via-Subprotocol |
 | `/v1/push/register` | POST/DELETE | push | Bearer |
 | `/health` | GET | apps/server | — |
 | `/openapi.json` + `/docs` | GET | rpc-server | — |

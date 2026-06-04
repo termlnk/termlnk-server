@@ -66,7 +66,7 @@ export interface IRelayClaimTokenService {
 }
 
 export const IRelayClaimTokenService = createIdentifier<IRelayClaimTokenService>(
-  'collab.relay-claim-token-service'
+  'shared-terminal.relay-claim-token-service'
 );
 
 /**

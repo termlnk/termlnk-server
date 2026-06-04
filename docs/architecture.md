@@ -35,9 +35,10 @@ termlnk-server/
 │   ├── protocol/                Zod schemas — shared with the desktop client
 │   ├── auth/                    SRP6a + JWT + refresh-token + devices routes
 │   ├── sync/                    push / pull engine + /sync/poke auth helper
-│   ├── collab/                  invite create / list / revoke / claim
-│   ├── shared-terminal/         /shared-terminal/ WS relay (PTY fan-out, E2EE pipe)
-│   ├── multiplayer/             /multiplayer/announce + /multiplayer/signal WS
+│   ├── shared-terminal/         shared-session domain (one plugin, split by service):
+│   │                            relay WS (/v1/shared-terminal), collab invites
+│   │                            (/v1/collab, /s), multiplayer announce + signal
+│   │                            (/v1/multiplayer)
 │   └── push/                    /push/register device token registry
 └── internal/shared/             eslint config, tsconfig presets, vitest preset
 ```
@@ -59,10 +60,8 @@ crypto              rpc-server                              database
    │       │                       │
    ▼       ▼                       ▼
                 ┌─── auth ────────────┐
-                ├─── sync ────────────┤
-                ├─── collab ──────────┤    feature plugins
-                ├─── shared-terminal ─┤    (each mounts a routePrefix)
-                ├─── multiplayer ─────┤
+                ├─── sync ────────────┤    feature plugins
+                ├─── shared-terminal ─┤    (each mounts one or more routePrefixes)
                 └─── push ────────────┘
                          │
                          ▼
@@ -74,11 +73,14 @@ crypto              rpc-server                              database
 
 Rules:
 
-- Feature plugins (`auth` / `sync` / `collab` / `shared-terminal` / `multiplayer` /
-  `push`) may import from `core`, `rpc-server`, `database/repositories`, `crypto`,
-  `kv`, `sync-broadcast`, `protocol`. They MUST NOT import from each other —
-  cross-feature concerns belong in a shared package, never threaded through
-  another feature.
+- Feature plugins (`auth` / `sync` / `shared-terminal` / `push`) may import from
+  `core`, `rpc-server`, `database/repositories`, `crypto`, `kv`, `sync-broadcast`,
+  `protocol`. They MUST NOT import from each other — cross-feature concerns belong
+  in a shared package, never threaded through another feature. (`shared-terminal`
+  is the shared-session bounded context: the former `collab` + `multiplayer`
+  packages were merged into it because all three planes — relay / invite admission
+  / signalling — key off the same `sessionId`; inside the package they split by
+  service + controller, not by package.)
 - `database/repositories` exposes interfaces only. Service code never reads
   from `entities` directly.
 - `apps/server` is the only place that constructs concrete adaptors

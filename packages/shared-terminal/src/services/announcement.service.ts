@@ -56,7 +56,7 @@ export interface IAnnouncementService {
   dispose(): void;
 }
 
-export const IAnnouncementService = createIdentifier<IAnnouncementService>('multiplayer.announcement-service');
+export const IAnnouncementService = createIdentifier<IAnnouncementService>('shared-terminal.announcement-service');
 
 interface IAnnouncementChangeEnvelope {
   readonly originInstanceId: string;

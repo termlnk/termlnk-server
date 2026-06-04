@@ -22,9 +22,9 @@ import type { AppOpenAPI } from '@termlnk-server/rpc-server';
 import type { IRelayConnection, IRelayHandle } from '../services/relay.service';
 import { upgradeWebSocket } from '@hono/node-server';
 import { z } from '@hono/zod-openapi';
-import { IRelayClaimTokenService } from '@termlnk-server/collab';
 import { IJwtService } from '@termlnk-server/crypto';
 import { createWsBearerAuthMiddleware, HttpError } from '@termlnk-server/rpc-server';
+import { IRelayClaimTokenService } from '../services/relay-claim-token.service';
 import { IRelayService } from '../services/relay.service';
 
 const querySchema = z.object({
@@ -33,7 +33,7 @@ const querySchema = z.object({
   connectionId: z.string().min(1).max(256).optional(),
 });
 
-export class SharedTerminalController {
+export class RelayController {
   constructor(
     @IJwtService private readonly _jwt: IJwtService,
     @IRelayService private readonly _relay: IRelayService,

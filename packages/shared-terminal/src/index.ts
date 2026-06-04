@@ -14,7 +14,14 @@
  */
 
 export { SHARED_TERMINAL_PLUGIN_CONFIG_KEY } from './config.schema';
-export type { ISharedTerminalPluginConfig } from './config.schema';
+export type { IIceServerConfig, ISharedTerminalPluginConfig } from './config.schema';
 export { SHARED_TERMINAL_PLUGIN_NAME, SharedTerminalPlugin } from './plugin';
+export { AnnouncementService, IAnnouncementService } from './services/announcement.service';
+export { CollabService, ICollabService } from './services/collab.service';
+export type { ICreateInviteParams } from './services/collab.service';
+export { IRelayClaimTokenService, RelayClaimTokenService } from './services/relay-claim-token.service';
+export type { IRelayClaimTokenPayload } from './services/relay-claim-token.service';
 export type { IRelayAttachOptions, IRelayConnection, IRelayHandle } from './services/relay.service';
 export { IRelayService, RelayService } from './services/relay.service';
+export type { ISignalAttachOptions, ISignalConnection, ISignalHandle } from './services/signaling.service';
+export { ISignalingService, SignalingService } from './services/signaling.service';

@@ -14,11 +14,7 @@
  */
 
 import { createRoute, z } from '@hono/zod-openapi';
-import {
-  announceMultiplayerSessionRequestSchema,
-  errorResponseSchema,
-  listMultiplayerSessionsResponseSchema,
-} from '@termlnk-server/protocol';
+import { announceMultiplayerSessionRequestSchema, errorResponseSchema, listMultiplayerSessionsResponseSchema } from '@termlnk-server/protocol';
 
 const tags = ['Multiplayer'];
 

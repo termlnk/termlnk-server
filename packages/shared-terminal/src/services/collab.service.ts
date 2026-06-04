@@ -59,7 +59,7 @@ export interface ICollabService {
   claim(params: IClaimInviteParams): Promise<IClaimCollabInviteResponse>;
 }
 
-export const ICollabService = createIdentifier<ICollabService>('collab.service');
+export const ICollabService = createIdentifier<ICollabService>('shared-terminal.collab-service');
 
 function toView(row: ICollabInviteRow): ICollabInviteServerView {
   const view: ICollabInviteServerView = {

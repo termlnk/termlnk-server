@@ -30,7 +30,6 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { AuthPlugin } from '@termlnk-server/auth';
-import { CollabPlugin } from '@termlnk-server/collab';
 import { Core, LogLevel } from '@termlnk-server/core';
 import { IHmacService, IJwtService, ISrpService, JoseJwtService, WebCryptoHmacService } from '@termlnk-server/crypto';
 import { NodeSrpService } from '@termlnk-server/crypto/node-srp';
@@ -38,7 +37,6 @@ import { DatabasePlugin } from '@termlnk-server/database';
 import { NodePgAdaptor } from '@termlnk-server/database/node-pg';
 import { IKVStore } from '@termlnk-server/kv';
 import { IoredisKVStore } from '@termlnk-server/kv/ioredis';
-import { MultiplayerPlugin } from '@termlnk-server/multiplayer';
 import { PushPlugin } from '@termlnk-server/push';
 import { IAppService, RpcServerPlugin } from '@termlnk-server/rpc-server';
 import { pinoLogger } from '@termlnk-server/rpc-server/pino-logger';
@@ -132,7 +130,8 @@ async function main(): Promise<void> {
     }],
     [SyncPlugin, {}],
     [PushPlugin, {}],
-    [CollabPlugin, {
+    [SharedTerminalPlugin, {
+      redis: kv.client,
       // RelayClaimToken HMAC reuses the JWT access secret. They sign
       // different envelope shapes so cross-confusion is impossible, and the
       // threat model collapses on JWT_ACCESS_SECRET leak anyway (an attacker
@@ -140,8 +139,6 @@ async function main(): Promise<void> {
       relayClaimTokenSecret: config.jwtAccessSecret,
       relayClaimTokenTtlMs: config.relayClaimTokenTtlSeconds * 1000,
     }],
-    [SharedTerminalPlugin, { redis: kv.client }],
-    [MultiplayerPlugin, { redis: kv.client }],
   ]);
 
   core.start();

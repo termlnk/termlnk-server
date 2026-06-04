@@ -69,7 +69,7 @@ export interface ISignalingService {
   attach(conn: ISignalConnection, options: ISignalAttachOptions): ISignalHandle;
 }
 
-export const ISignalingService = createIdentifier<ISignalingService>('multiplayer.signaling-service');
+export const ISignalingService = createIdentifier<ISignalingService>('shared-terminal.signaling-service');
 
 interface ISignalSession {
   readonly userId: string;

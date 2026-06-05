@@ -27,7 +27,16 @@
 
 import { z } from 'zod';
 
-export const SYNC_RESOURCES = ['host', 'config', 'ai_provider', 'mcp_server', 'skill'] as const;
+export const SYNC_RESOURCES = [
+  'host',
+  'config',
+  'ai_provider',
+  'mcp_server',
+  'skill',
+  'ssh_key',
+  'identity',
+  'known_host',
+] as const;
 export const syncResourceIdSchema = z.enum(SYNC_RESOURCES);
 export type SyncResourceId = (typeof SYNC_RESOURCES)[number];
 

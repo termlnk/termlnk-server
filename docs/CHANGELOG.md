@@ -1,5 +1,13 @@
 # Changelog
 
+# [0.3.0](https://github.com/termlnk/termlnk-server/compare/v0.2.4...v0.3.0) (2026-06-05)
+
+
+### Features
+
+* **protocol:** add ssh_key, identity and known_host sync resources ([0e4d637](https://github.com/termlnk/termlnk-server/commit/0e4d637b89d3310c27e6fea4f2dbdecde215bf6b))
+* **shared-terminal:** relay notifies daemon on participant leave ([82f1431](https://github.com/termlnk/termlnk-server/commit/82f14315a331281bb225deef314fda07e680cc99))
+
 ## [0.2.4](https://github.com/termlnk/termlnk-server/compare/v0.2.3...v0.2.4) (2026-05-31)
 
 

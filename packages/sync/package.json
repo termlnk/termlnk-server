@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/sync",
   "type": "module",
-  "version": "0.2.4",
+  "version": "0.3.0",
   "private": true,
   "description": "Sync engine + HTTP routes + WS auth helpers. Plugs into RpcServerPlugin via DI; WebSocket transport is wired by each entrypoint (apps/server vs apps/edge-server).",
   "license": "PolyForm-Noncommercial-1.0.0",

@@ -23,7 +23,13 @@
 #           GOOGLE_REDIRECT_URI="https://<your-app>.fly.dev/auth/google/callback"
 #       Only set GOOGLE_DESKTOP_CALLBACK_URL if your desktop app registers a
 #       scheme other than the default termlnk://auth/callback.
-#   5) `fly deploy --config deploy/fly/fly.toml`
+#   5) (optional) Enable admin dashboard:
+#         fly secrets set \
+#           ADMIN_JWT_SECRET="$(node -e "console.log(require('crypto').randomBytes(64).toString('base64'))")" \
+#           ADMIN_SEED_EMAIL="admin@example.com" \
+#           ADMIN_SEED_PASSWORD="your-secure-password"
+#       Then visit https://<your-app>.fly.dev/admin/ to log in.
+#   6) `fly deploy --config deploy/fly/fly.toml`
 
 app = "termlnk-server"
 primary_region = "iad" # us-east; change to nearest region (e.g. sjc, fra, sin, syd, nrt)

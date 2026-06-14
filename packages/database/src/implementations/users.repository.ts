@@ -13,7 +13,7 @@
  * governing permissions and limitations under the License.
  */
 
-import type { IUserInsertParams, IUserRow, IUsersRepository } from '../repositories/users.repository';
+import type { IUserInsertParams, IUserProfileUpdateParams, IUserRow, IUsersRepository } from '../repositories/users.repository';
 import type { ITxContext } from '../services/db-adaptor.service';
 import { eq } from 'drizzle-orm';
 import { users } from '../entities';
@@ -34,6 +34,7 @@ export class PgUsersRepository implements IUsersRepository {
       const [row] = await db.insert(users).values({
         email: values.email,
         displayName: values.displayName,
+        avatarUrl: values.avatarUrl,
         emailVerified: values.emailVerified,
       }).returning();
       if (!row) {
@@ -58,5 +59,30 @@ export class PgUsersRepository implements IUsersRepository {
     const db = pgExec(this._adaptor, tx);
     const rows = await db.select().from(users).where(eq(users.email, email)).limit(1);
     return rows[0] ?? null;
+  }
+
+  async updateProfile(id: string, params: IUserProfileUpdateParams, tx?: ITxContext): Promise<IUserRow> {
+    const db = pgExec(this._adaptor, tx);
+    const [row] = await db.update(users).set({
+      updatedAt: new Date(),
+      ...(params.displayName !== undefined && { displayName: params.displayName }),
+      ...(params.avatarUrl !== undefined && { avatarUrl: params.avatarUrl }),
+    }).where(eq(users.id, id)).returning();
+    if (!row) {
+      throw new Error('[PgUsersRepository.updateProfile] returning() yielded no row');
+    }
+    return row;
+  }
+
+  async setActive(id: string, isActive: boolean, tx?: ITxContext): Promise<IUserRow> {
+    const db = pgExec(this._adaptor, tx);
+    const [row] = await db.update(users).set({
+      isActive,
+      updatedAt: new Date(),
+    }).where(eq(users.id, id)).returning();
+    if (!row) {
+      throw new Error('[PgUsersRepository.setActive] returning() yielded no row');
+    }
+    return row;
   }
 }

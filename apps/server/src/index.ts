@@ -30,6 +30,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { AuthPlugin } from '@termlnk-server/auth';
+import { AdminPlugin } from '@termlnk-server/admin';
 import { Core, LogLevel } from '@termlnk-server/core';
 import { IHmacService, IJwtService, ISrpService, JoseJwtService, WebCryptoHmacService } from '@termlnk-server/crypto';
 import { NodeSrpService } from '@termlnk-server/crypto/node-srp';
@@ -139,6 +140,13 @@ async function main(): Promise<void> {
       relayClaimTokenSecret: config.jwtAccessSecret,
       relayClaimTokenTtlMs: config.relayClaimTokenTtlSeconds * 1000,
     }],
+    ...(config.admin ? [[AdminPlugin, {
+      jwtSecret: config.admin.jwtSecret,
+      jwtTtlSeconds: config.admin.jwtTtlSeconds,
+      seedEmail: config.admin.seedEmail,
+      seedPassword: config.admin.seedPassword,
+      spaDistPath: resolve(__dirname, 'admin-ui'),
+    }] as const] : []),
   ]);
 
   core.start();

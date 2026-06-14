@@ -1,7 +1,7 @@
 ## termlnk-server Dockerfile — multi-stage with non-root runtime user.
 ##
 ##   Stage 1 (deps):    cache pnpm store from lockfile (fast rebuilds when only source changes)
-##   Stage 2 (builder): install full workspace, build protocol + server, prune to prod deps
+##   Stage 2 (builder): install full workspace, build protocol + admin-ui + server, prune to prod deps
 ##   Stage 3 (runtime): minimal Alpine + non-root user (uid 1001) + dist only
 
 FROM node:22-alpine AS deps
@@ -13,6 +13,7 @@ RUN apk add --no-cache libc6-compat \
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY internal/shared/package.json internal/shared/
 COPY packages/protocol/package.json packages/protocol/
+COPY apps/admin-ui/package.json apps/admin-ui/
 COPY apps/server/package.json apps/server/
 RUN pnpm fetch
 
@@ -26,6 +27,7 @@ COPY apps apps
 COPY turbo.json ./
 RUN pnpm install --offline
 RUN pnpm --filter @termlnk-server/protocol build \
+  && pnpm --filter @termlnk/admin-ui build \
   && pnpm --filter @termlnk/server build
 # Collect prod deps into a self-contained dir. `--legacy` works around pnpm 10's
 # new requirement that the source workspace declare `inject-workspace-packages`;

@@ -10,7 +10,8 @@
     "./node-pg": "./src/adaptors/node-pg.adaptor.ts",
     "./entities": "./src/entities/index.ts",
     "./entities/base": "./src/entities/base.ts",
-    "./repositories": "./src/repositories/index.ts"
+    "./repositories": "./src/repositories/index.ts",
+    "./helpers": "./src/implementations/_helpers.ts"
   },
   "main": "./src/index.ts",
   "types": "./src/index.ts",

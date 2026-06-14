@@ -189,6 +189,34 @@ fi
 log "Generating JWT secrets..."
 JWT_ACCESS_SECRET="$(gen_secret)"
 JWT_REFRESH_SECRET="$(gen_secret)"
+ADMIN_JWT_SECRET="$(gen_secret)"
+
+# --- Collect admin credentials ------------------------------------------------
+ADMIN_SEED_EMAIL=""
+ADMIN_SEED_PASS=""
+
+if piped_or_noninteractive; then
+  ADMIN_SEED_EMAIL="admin@termlnk.local"
+  ADMIN_SEED_PASS="$(gen_secret | tr -dc 'A-Za-z0-9' | head -c 16)"
+else
+  echo
+  log "Admin dashboard credentials (used for the first admin account)."
+  ADMIN_SEED_EMAIL="$(prompt 'Admin email' 'admin@termlnk.local')"
+  while true; do
+    printf '  Admin password (min 8 chars): ' >&2
+    IFS= read -rs ADMIN_SEED_PASS || ADMIN_SEED_PASS=''
+    echo >&2
+    if [ "${#ADMIN_SEED_PASS}" -ge 8 ]; then
+      break
+    fi
+    if [ -z "$ADMIN_SEED_PASS" ]; then
+      ADMIN_SEED_PASS="$(gen_secret | tr -dc 'A-Za-z0-9' | head -c 16)"
+      log "No password entered — generated: $ADMIN_SEED_PASS"
+      break
+    fi
+    warn "Password must be at least 8 characters. Try again."
+  done
+fi
 
 if [ -n "$DOMAIN" ]; then
   server_bind=127.0.0.1
@@ -238,6 +266,14 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=$google_redirect_uri
 GOOGLE_DESKTOP_CALLBACK_URL=termlnk://auth/callback
+
+# Admin dashboard — enabled by default with generated secret. Seed admin is
+# auto-created on first boot. Change the email/password below, then visit
+# /admin/ to log in.
+ADMIN_JWT_SECRET=$ADMIN_JWT_SECRET
+ADMIN_SEED_EMAIL=$ADMIN_SEED_EMAIL
+ADMIN_SEED_PASSWORD=$ADMIN_SEED_PASS
+ADMIN_JWT_TTL_SECONDS=3600
 EOF
 chmod 600 .env
 ok "Wrote $INSTALL_DIR/.env (secrets generated)."
@@ -271,12 +307,18 @@ echo
 ok "termlnk-server is up."
 if [ -n "$DOMAIN" ]; then
   echo "  ${C_BOLD}URL${C_RST}        https://$DOMAIN"
+  echo "  ${C_BOLD}Admin${C_RST}      https://$DOMAIN/admin/"
   echo "  ${C_BOLD}OpenAPI${C_RST}    https://$DOMAIN/docs"
 else
   echo "  ${C_BOLD}URL${C_RST}        http://localhost:4000"
+  echo "  ${C_BOLD}Admin${C_RST}      http://localhost:4000/admin/"
   echo "  ${C_BOLD}OpenAPI${C_RST}    http://localhost:4000/docs"
 fi
 echo "  ${C_BOLD}Install dir${C_RST}   $INSTALL_DIR"
 echo "  ${C_BOLD}Manage${C_RST}        $INSTALL_DIR/deploy.sh {status|logs|update|backup|restart|stop|uninstall}"
+echo
+echo "  ${C_BOLD}Admin login${C_RST}"
+echo "    Email:    $ADMIN_SEED_EMAIL"
+echo "    Password: $ADMIN_SEED_PASS"
 echo
 echo "  ${C_DIM}Tip: edit $INSTALL_DIR/.env then run './deploy.sh restart' to apply changes.${C_RST}"

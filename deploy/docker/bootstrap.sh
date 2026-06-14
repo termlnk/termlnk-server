@@ -30,16 +30,22 @@ gen_secret() {
 
 ACCESS="$(gen_secret)"
 REFRESH="$(gen_secret)"
+ADMIN="$(gen_secret)"
+ADMIN_PASS="$(gen_secret | tr -dc 'A-Za-z0-9' | head -c 16)"
 
-# Copy template, then inject the two empty secret slots.
+# Copy template, then inject the empty secret slots.
 cp "$TEMPLATE" "$ENV_FILE"
 # macOS sed needs -i ''; GNU sed needs -i. Detect by uname.
 if [ "$(uname -s)" = "Darwin" ]; then
-  sed -i '' "s|^JWT_ACCESS_SECRET=$|JWT_ACCESS_SECRET=$ACCESS|"   "$ENV_FILE"
-  sed -i '' "s|^JWT_REFRESH_SECRET=$|JWT_REFRESH_SECRET=$REFRESH|" "$ENV_FILE"
+  sed -i '' "s|^JWT_ACCESS_SECRET=$|JWT_ACCESS_SECRET=$ACCESS|"           "$ENV_FILE"
+  sed -i '' "s|^JWT_REFRESH_SECRET=$|JWT_REFRESH_SECRET=$REFRESH|"         "$ENV_FILE"
+  sed -i '' "s|^ADMIN_JWT_SECRET=$|ADMIN_JWT_SECRET=$ADMIN|"               "$ENV_FILE"
+  sed -i '' "s|^ADMIN_SEED_PASSWORD=$|ADMIN_SEED_PASSWORD=$ADMIN_PASS|"   "$ENV_FILE"
 else
-  sed -i    "s|^JWT_ACCESS_SECRET=$|JWT_ACCESS_SECRET=$ACCESS|"   "$ENV_FILE"
-  sed -i    "s|^JWT_REFRESH_SECRET=$|JWT_REFRESH_SECRET=$REFRESH|" "$ENV_FILE"
+  sed -i    "s|^JWT_ACCESS_SECRET=$|JWT_ACCESS_SECRET=$ACCESS|"           "$ENV_FILE"
+  sed -i    "s|^JWT_REFRESH_SECRET=$|JWT_REFRESH_SECRET=$REFRESH|"         "$ENV_FILE"
+  sed -i    "s|^ADMIN_JWT_SECRET=$|ADMIN_JWT_SECRET=$ADMIN|"               "$ENV_FILE"
+  sed -i    "s|^ADMIN_SEED_PASSWORD=$|ADMIN_SEED_PASSWORD=$ADMIN_PASS|"   "$ENV_FILE"
 fi
 chmod 600 "$ENV_FILE"
-echo "[bootstrap] wrote $ENV_FILE with freshly-generated JWT secrets"
+echo "[bootstrap] wrote $ENV_FILE with freshly-generated JWT and admin secrets"

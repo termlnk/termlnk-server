@@ -51,5 +51,5 @@ export { ISyncGlobalVersionRepository } from './sync-global-version.repository';
 export type { ISyncObjectRow, ISyncObjectWriteParams } from './sync-objects.repository';
 export { ISyncObjectsRepository } from './sync-objects.repository';
 
-export type { IUserInsertParams, IUserRow } from './users.repository';
+export type { IUserInsertParams, IUserProfileUpdateParams, IUserRow } from './users.repository';
 export { IUsersRepository } from './users.repository';

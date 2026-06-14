@@ -22,7 +22,13 @@ export type IUserRow = typeof users.$inferSelect;
 export interface IUserInsertParams {
   email: string;
   displayName: string | null;
+  avatarUrl: string | null;
   emailVerified: boolean;
+}
+
+export interface IUserProfileUpdateParams {
+  displayName?: string;
+  avatarUrl?: string;
 }
 
 export interface IUsersRepository {
@@ -36,6 +42,9 @@ export interface IUsersRepository {
   findById(id: string, tx?: ITxContext): Promise<IUserRow | null>;
   /** Email lookup is case-sensitive; caller is responsible for lowercasing. */
   findByEmail(email: string, tx?: ITxContext): Promise<IUserRow | null>;
+  /** Update display name and/or avatar. Only non-undefined fields are SET. */
+  updateProfile(id: string, params: IUserProfileUpdateParams, tx?: ITxContext): Promise<IUserRow>;
+  setActive(id: string, isActive: boolean, tx?: ITxContext): Promise<IUserRow>;
 }
 
 export const IUsersRepository = createIdentifier<IUsersRepository>('database.users-repository');

@@ -26,6 +26,7 @@
  * when defining a new entity with bytea columns.
  */
 
+export { adminUsers } from './admin-users';
 export { collabInvites } from './collab-invites';
 export { multiplayerAnnouncements } from './multiplayer-announcements';
 export { oauthIdentities } from './oauth-identities';

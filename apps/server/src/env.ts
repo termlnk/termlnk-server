@@ -71,6 +71,12 @@ const envSchema = z.object({
     .string()
     .default('*')
     .transform((v) => (v === '*' ? ['*'] : v.split(',').map((s) => s.trim()).filter(Boolean))),
+
+  // ── Admin dashboard ──
+  ADMIN_JWT_SECRET: optionalNonEmpty(secret),
+  ADMIN_SEED_EMAIL: optionalNonEmpty(z.string().email()),
+  ADMIN_SEED_PASSWORD: optionalNonEmpty(z.string().min(8)),
+  ADMIN_JWT_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
 }).refine(
   (v) => !v.GOOGLE_OAUTH_ENABLED || (!!v.GOOGLE_CLIENT_ID && !!v.GOOGLE_CLIENT_SECRET && !!v.GOOGLE_REDIRECT_URI),
   { message: 'GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and GOOGLE_REDIRECT_URI are required when GOOGLE_OAUTH_ENABLED is true' }
@@ -82,6 +88,13 @@ export interface IGoogleOAuthRuntimeConfig {
   readonly clientSecret: string;
   readonly redirectUri: string;
   readonly desktopCallbackUrl: string;
+}
+
+export interface IAdminRuntimeConfig {
+  readonly jwtSecret: string;
+  readonly jwtTtlSeconds: number;
+  readonly seedEmail?: string;
+  readonly seedPassword?: string;
 }
 
 export interface IRuntimeConfig {
@@ -98,6 +111,7 @@ export interface IRuntimeConfig {
   readonly requireEmailVerification: boolean;
   readonly google: IGoogleOAuthRuntimeConfig | null;
   readonly corsOrigins: readonly string[];
+  readonly admin: IAdminRuntimeConfig | null;
 }
 
 export function loadEnv(source: Record<string, string | undefined> = process.env): IRuntimeConfig {
@@ -131,5 +145,13 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
       }
       : null,
     corsOrigins: v.CORS_ORIGINS,
+    admin: v.ADMIN_JWT_SECRET
+      ? {
+        jwtSecret: v.ADMIN_JWT_SECRET,
+        jwtTtlSeconds: v.ADMIN_JWT_TTL_SECONDS,
+        seedEmail: v.ADMIN_SEED_EMAIL,
+        seedPassword: v.ADMIN_SEED_PASSWORD,
+      }
+      : null,
   };
 }

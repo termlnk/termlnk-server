@@ -105,6 +105,7 @@ export class AuthService implements IAuthService {
         const u = await this._usersRepo.insert({
           email,
           displayName: params.displayName ?? null,
+          avatarUrl: null,
           emailVerified: !config?.requireEmailVerification,
         }, tx);
         await this._srpCredentials.insert({
@@ -150,6 +151,9 @@ export class AuthService implements IAuthService {
     if (!user) {
       throw new HttpError(401, 'invalid_credentials');
     }
+    if (!user.isActive) {
+      throw new HttpError(403, 'account_disabled', 'account is disabled');
+    }
 
     const config = this._configService.getConfig<IAuthPluginConfig>(AUTH_PLUGIN_CONFIG_KEY);
     if (config?.requireEmailVerification && !user.emailVerified) {
@@ -173,7 +177,7 @@ export class AuthService implements IAuthService {
       }
       await this._refreshTokens.revokeByJti(claims.jti, new Date(), tx);
       const user = await this._usersRepo.findById(existing.userId, tx);
-      if (!user) {
+      if (!user || !user.isActive) {
         return null;
       }
       return this._issueTokensTx(tx, user.id, user.email, {
@@ -239,8 +243,23 @@ export class AuthService implements IAuthService {
         user = await this._usersRepo.insert({
           email,
           displayName: identity.name ?? null,
+          avatarUrl: identity.picture ?? null,
           emailVerified: true,
         }, tx);
+      } else {
+        if (!user.isActive) {
+          throw new HttpError(403, 'account_disabled', 'account is disabled');
+        }
+        const profilePatch: { displayName?: string; avatarUrl?: string } = {};
+        if (!user.displayName && identity.name) {
+          profilePatch.displayName = identity.name;
+        }
+        if (!user.avatarUrl && identity.picture) {
+          profilePatch.avatarUrl = identity.picture;
+        }
+        if (Object.keys(profilePatch).length > 0) {
+          user = await this._usersRepo.updateProfile(user.id, profilePatch, tx);
+        }
       }
 
       await this._oauthIdentities.upsert({
@@ -262,6 +281,9 @@ export class AuthService implements IAuthService {
     const user = await this._usersRepo.findById(userId);
     if (!user) {
       throw new HttpError(401, 'invalid_credentials');
+    }
+    if (!user.isActive) {
+      throw new HttpError(403, 'account_disabled', 'account is disabled');
     }
     const tokens = await this._issueTokens(user.id, user.email, device);
     return { user: toUserAccount(user), tokens };

@@ -14,7 +14,7 @@
  */
 
 import type { Plugin } from 'vite';
-import { cpSync } from 'node:fs';
+import { cpSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
@@ -26,6 +26,20 @@ function copyMigrations(): Plugin {
       const src = resolve(import.meta.dirname, '../../packages/database/src/migrations');
       const dest = resolve(options.dir ?? 'dist', 'migrations');
       cpSync(src, dest, { recursive: true });
+    },
+  };
+}
+
+function copyAdminSpa(): Plugin {
+  return {
+    name: 'termlnk:copy-admin-spa',
+    apply: 'build',
+    writeBundle(options) {
+      const src = resolve(import.meta.dirname, '../admin-ui/dist');
+      const dest = resolve(options.dir ?? 'dist', 'admin-ui');
+      if (existsSync(src)) {
+        cpSync(src, dest, { recursive: true });
+      }
     },
   };
 }
@@ -42,6 +56,7 @@ export default defineConfig({
       input: {
         index: resolve(import.meta.dirname, 'src/index.ts'),
         migrate: resolve(import.meta.dirname, 'src/db/migrate.ts'),
+        'reset-admin-password': resolve(import.meta.dirname, 'src/cli/reset-admin-password.ts'),
       },
       output: {
         format: 'esm',
@@ -63,5 +78,5 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-  plugins: [copyMigrations()],
+  plugins: [copyMigrations(), copyAdminSpa()],
 });

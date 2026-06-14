@@ -51,6 +51,8 @@ Usage: ./deploy.sh <command> [args]
   ${C_BOLD}logs${C_RST} [service]       Tail logs (default: server)
 
   ${C_BOLD}update${C_RST}               Pull latest images and restart
+  ${C_BOLD}enable-admin${C_RST}         Generate admin credentials and enable the dashboard
+  ${C_BOLD}reset-admin-pw${C_RST}      Reset the admin password (updates DB + .env, prints new password)
   ${C_BOLD}backup${C_RST}               pg_dump Postgres to ./backups/termlnk-<timestamp>.sql.gz
   ${C_BOLD}restore${C_RST} <file>       Restore from a gzipped pg_dump (DESTRUCTIVE)
 
@@ -73,6 +75,88 @@ cmd_update() {
   log "Re-creating containers..."
   compose up -d
   ok "Updated. Run './deploy.sh status' to verify."
+}
+
+gen_secret() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -base64 64 | tr -d '\n'
+  elif [ -r /dev/urandom ]; then
+    head -c 64 /dev/urandom | base64 | tr -d '\n'
+  else
+    die "Neither openssl nor /dev/urandom available."
+  fi
+}
+
+cmd_enable_admin() {
+  if grep -qE '^ADMIN_JWT_SECRET=.+' .env 2>/dev/null; then
+    warn "Admin dashboard is already enabled (ADMIN_JWT_SECRET is set in .env)."
+    return 0
+  fi
+
+  local admin_secret admin_pass admin_email
+  admin_secret="$(gen_secret)"
+  admin_pass="$(gen_secret | tr -dc 'A-Za-z0-9' | head -c 16)"
+  admin_email="admin@termlnk.local"
+
+  # Remove empty placeholder lines if present (from a previous .env.example copy)
+  if [ "$(uname -s)" = "Darwin" ]; then
+    sed -i '' '/^ADMIN_JWT_SECRET=$/d; /^ADMIN_SEED_EMAIL=$/d; /^ADMIN_SEED_PASSWORD=$/d; /^ADMIN_JWT_TTL_SECONDS=$/d' .env
+  else
+    sed -i '/^ADMIN_JWT_SECRET=$/d; /^ADMIN_SEED_EMAIL=$/d; /^ADMIN_SEED_PASSWORD=$/d; /^ADMIN_JWT_TTL_SECONDS=$/d' .env
+  fi
+
+  cat >> .env <<EOF
+
+# Admin dashboard — enabled by deploy.sh enable-admin
+ADMIN_JWT_SECRET=$admin_secret
+ADMIN_SEED_EMAIL=$admin_email
+ADMIN_SEED_PASSWORD=$admin_pass
+ADMIN_JWT_TTL_SECONDS=3600
+EOF
+
+  log "Restarting server..."
+  compose up -d
+
+  echo
+  ok "Admin dashboard enabled."
+  if [ -n "${DOMAIN:-}" ]; then
+    echo "  ${C_BOLD}Admin${C_RST}      https://$DOMAIN/admin/"
+  else
+    echo "  ${C_BOLD}Admin${C_RST}      http://localhost:${SERVER_PORT:-4000}/admin/"
+  fi
+  echo "  ${C_BOLD}Email${C_RST}      $admin_email"
+  echo "  ${C_BOLD}Password${C_RST}   $admin_pass"
+  echo
+  echo "  ${C_DIM}Credentials are saved in $(pwd)/.env${C_RST}"
+}
+
+cmd_reset_admin_pw() {
+  if ! grep -qE '^ADMIN_JWT_SECRET=.+' .env 2>/dev/null; then
+    die "Admin dashboard is not enabled. Run './deploy.sh enable-admin' first."
+  fi
+
+  local admin_email admin_pass
+  admin_email="$(grep -E '^ADMIN_SEED_EMAIL=' .env | head -n1 | cut -d= -f2- | tr -d '\r')"
+  admin_email="${admin_email:-admin@termlnk.local}"
+  admin_pass="$(gen_secret | tr -dc 'A-Za-z0-9' | head -c 16)"
+
+  log "Resetting password for $admin_email ..."
+  compose exec -T -e ADMIN_EMAIL="$admin_email" -e ADMIN_NEW_PASSWORD="$admin_pass" \
+    server node dist/reset-admin-password.js
+
+  # Sync .env so seed password matches (next fresh deploy stays consistent)
+  if [ "$(uname -s)" = "Darwin" ]; then
+    sed -i '' "s|^ADMIN_SEED_PASSWORD=.*|ADMIN_SEED_PASSWORD=$admin_pass|" .env
+  else
+    sed -i "s|^ADMIN_SEED_PASSWORD=.*|ADMIN_SEED_PASSWORD=$admin_pass|" .env
+  fi
+
+  echo
+  ok "Admin password reset."
+  echo "  ${C_BOLD}Email${C_RST}      $admin_email"
+  echo "  ${C_BOLD}Password${C_RST}   $admin_pass"
+  echo
+  echo "  ${C_DIM}New password saved in $(pwd)/.env${C_RST}"
 }
 
 cmd_backup() {
@@ -126,8 +210,10 @@ case "${1:-}" in
   restart)   shift; cmd_restart "$@" ;;
   status)    shift; cmd_status "$@" ;;
   logs)      shift; cmd_logs "$@" ;;
-  update)    shift; cmd_update "$@" ;;
-  backup)    shift; cmd_backup "$@" ;;
+  update)       shift; cmd_update "$@" ;;
+  enable-admin)    shift; cmd_enable_admin "$@" ;;
+  reset-admin-pw)  shift; cmd_reset_admin_pw "$@" ;;
+  backup)       shift; cmd_backup "$@" ;;
   restore)   shift; cmd_restore "$@" ;;
   shell)     shift; cmd_shell "$@" ;;
   uninstall) shift; cmd_uninstall "$@" ;;

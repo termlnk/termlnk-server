@@ -1,6 +1,6 @@
 {
   "name": "@termlnk-server/admin",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "Admin dashboard backend: independent admin auth, user/stats management API. Plugs into RpcServerPlugin via DI.",

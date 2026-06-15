@@ -1,5 +1,14 @@
 # Changelog
 
+# [0.4.0](https://github.com/termlnk/termlnk-server/compare/v0.3.0...v0.4.0) (2026-06-15)
+
+
+### Features
+
+* **admin:** add admin dashboard with user management, stats and auth ([449cfa2](https://github.com/termlnk/termlnk-server/commit/449cfa292cb61b56c6d9eb1ccc6c792647c67a79))
+* **protocol:** add port_forwarding_rule sync resource ([a851994](https://github.com/termlnk/termlnk-server/commit/a851994c4292a7991483407635024ac42ba47098))
+* **protocol:** add snippet sync resource ([28af9a8](https://github.com/termlnk/termlnk-server/commit/28af9a81d3ace25fc9fad67e428e45672441d52e))
+
 # [0.3.0](https://github.com/termlnk/termlnk-server/compare/v0.2.4...v0.3.0) (2026-06-05)
 
 

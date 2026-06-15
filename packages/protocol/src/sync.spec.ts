@@ -24,12 +24,13 @@ import {
 } from './sync.js';
 
 describe('sync schemas', () => {
-  it('syncResourceId enumerates the 9 resources', () => {
+  it('syncResourceId enumerates the 10 resources', () => {
     expect(syncResourceIdSchema.safeParse('host').success).toBe(true);
     expect(syncResourceIdSchema.safeParse('config').success).toBe(true);
     expect(syncResourceIdSchema.safeParse('ai_provider').success).toBe(true);
     expect(syncResourceIdSchema.safeParse('mcp_server').success).toBe(true);
     expect(syncResourceIdSchema.safeParse('skill').success).toBe(true);
+    expect(syncResourceIdSchema.safeParse('snippet').success).toBe(true);
     expect(syncResourceIdSchema.safeParse('ssh_key').success).toBe(true);
     expect(syncResourceIdSchema.safeParse('identity').success).toBe(true);
     expect(syncResourceIdSchema.safeParse('known_host').success).toBe(true);

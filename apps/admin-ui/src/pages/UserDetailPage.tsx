@@ -1,4 +1,4 @@
-import type { IDevice, IOAuthIdentity, IUserDetail, IUserSyncStats } from '../api/endpoints';
+import type { IDevice, IOAuthIdentity, ISyncResourceCount, IUserDetail, IUserSyncStats } from '../api/endpoints';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { api } from '../api/endpoints';
@@ -58,11 +58,11 @@ export function UserDetailPage() {
         &larr; Back to Users
       </Link>
 
-      <UserHeader user={user} devices={devices} onRefresh={fetchAll} setUser={setUser} setDevices={setDevices} />
+      <UserHeader user={user} devices={devices} setUser={setUser} setDevices={setDevices} />
 
       <div className="tm:mt-6 tm:grid tm:grid-cols-1 tm:lg:grid-cols-2 tm:gap-6">
         <AccountInfoCard user={user} />
-        <SyncDataCard syncStats={syncStats} />
+        <SyncDataCard user={user} syncStats={syncStats} setSyncStats={setSyncStats} />
         <DevicesCard
           user={user}
           devices={devices}
@@ -81,13 +81,11 @@ export function UserDetailPage() {
 function UserHeader({
   user,
   devices,
-  onRefresh,
   setUser,
   setDevices,
 }: {
   user: IUserDetail;
   devices: IDevice[];
-  onRefresh: () => void;
   setUser: React.Dispatch<React.SetStateAction<IUserDetail | null>>;
   setDevices: React.Dispatch<React.SetStateAction<IDevice[]>>;
 }) {
@@ -238,45 +236,110 @@ function AccountInfoCard({ user }: { user: IUserDetail }) {
 /*  Sync Data Card                                                     */
 /* ------------------------------------------------------------------ */
 
-function SyncDataCard({ syncStats }: { syncStats: IUserSyncStats | null }) {
+function SyncDataCard({
+  user,
+  syncStats,
+  setSyncStats,
+}: {
+  user: IUserDetail;
+  syncStats: IUserSyncStats | null;
+  setSyncStats: React.Dispatch<React.SetStateAction<IUserSyncStats | null>>;
+}) {
+  const [clearTarget, setClearTarget] = useState<ISyncResourceCount | null>(null);
+  const [clearLoading, setClearLoading] = useState(false);
+
+  const handleClearResource = async () => {
+    if (!clearTarget) {
+      return;
+    }
+
+    setClearLoading(true);
+    try {
+      await api.clearUserSyncResource(user.id, clearTarget.resource);
+      setSyncStats((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        const nextPerResource = prev.perResource.filter((r) => r.resource !== clearTarget.resource);
+        return {
+          ...prev,
+          perResource: nextPerResource,
+          totalSyncObjects: nextPerResource.reduce((sum, r) => sum + r.count, 0),
+        };
+      });
+    } finally {
+      setClearLoading(false);
+      setClearTarget(null);
+    }
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Sync Data</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {!syncStats || syncStats.perResource.length === 0
-          ? (
-            <p className="tm:text-sm tm:text-muted-foreground">No sync data</p>
-          )
-          : (
-            <>
-              <table className="tm:w-full tm:text-sm">
-                <thead>
-                  <tr className="tm:border-b tm:border-border">
-                    <th className="tm:px-2 tm:py-2 tm:text-left tm:font-medium tm:text-muted-foreground">Resource</th>
-                    <th className="tm:px-2 tm:py-2 tm:text-right tm:font-medium tm:text-muted-foreground">Objects</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {syncStats.perResource.map((r) => (
-                    <tr key={r.resource} className="tm:border-b tm:border-border/50">
-                      <td className="tm:px-2 tm:py-2">{r.resource}</td>
-                      <td className="tm:px-2 tm:py-2 tm:text-right tm:tabular-nums">{r.count}</td>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Sync Data</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!syncStats || syncStats.perResource.length === 0
+            ? (
+              <p className="tm:text-sm tm:text-muted-foreground">No sync data</p>
+            )
+            : (
+              <>
+                <table className="tm:w-full tm:text-sm">
+                  <thead>
+                    <tr className="tm:border-b tm:border-border">
+                      <th className="tm:px-2 tm:py-2 tm:text-left tm:font-medium tm:text-muted-foreground">Resource</th>
+                      <th className="tm:px-2 tm:py-2 tm:text-right tm:font-medium tm:text-muted-foreground">Objects</th>
+                      <th className="tm:px-2 tm:py-2 tm:text-right tm:font-medium tm:text-muted-foreground">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              <Separator className="tm:my-3" />
-              <p className="tm:text-sm tm:text-muted-foreground">
-                Sync Clients:
-                {' '}
-                <span className="tm:text-foreground tm:font-medium">{syncStats.syncClients.length}</span>
-              </p>
-            </>
-          )}
-      </CardContent>
-    </Card>
+                  </thead>
+                  <tbody>
+                    {syncStats.perResource.map((r) => (
+                      <tr key={r.resource} className="tm:border-b tm:border-border/50">
+                        <td className="tm:px-2 tm:py-2">{r.resource}</td>
+                        <td className="tm:px-2 tm:py-2 tm:text-right tm:tabular-nums">{r.count}</td>
+                        <td className="tm:px-2 tm:py-2 tm:text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="tm:text-destructive tm:hover:text-destructive"
+                            onClick={() => setClearTarget(r)}
+                          >
+                            Delete
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <Separator className="tm:my-3" />
+                <p className="tm:text-sm tm:text-muted-foreground">
+                  Sync Clients:
+                  {' '}
+                  <span className="tm:text-foreground tm:font-medium">{syncStats.syncClients.length}</span>
+                </p>
+              </>
+            )}
+        </CardContent>
+      </Card>
+
+      <ConfirmDialog
+        open={clearTarget !== null}
+        onClose={() => setClearTarget(null)}
+        onConfirm={handleClearResource}
+        title="Delete Sync Data"
+        description={
+          clearTarget
+            ? `Delete ${clearTarget.count} ${clearTarget.resource} sync object${clearTarget.count === 1 ? '' : 's'} for ${user.email}? This syncs as deletions to the user's devices.`
+            : ''
+        }
+        confirmText="Delete"
+        variant="destructive"
+        loading={clearLoading}
+      />
+    </>
   );
 }
 
@@ -297,7 +360,9 @@ function DevicesCard({
   const [revokeLoading, setRevokeLoading] = useState(false);
 
   const handleRevoke = async () => {
-    if (!revokeTarget) return;
+    if (!revokeTarget) {
+      return;
+    }
     setRevokeLoading(true);
     try {
       await api.revokeDevice(user.id, revokeTarget);

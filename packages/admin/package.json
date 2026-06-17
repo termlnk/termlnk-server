@@ -11,6 +11,7 @@
     "@termlnk-server/core": "workspace:*",
     "@termlnk-server/database": "workspace:*",
     "@termlnk-server/rpc-server": "workspace:*",
+    "@termlnk-server/sync-broadcast": "workspace:*",
     "@hono/node-server": "^2.0.2",
     "@hono/zod-openapi": "^1.4.0",
     "@node-rs/argon2": "^2.0.2",

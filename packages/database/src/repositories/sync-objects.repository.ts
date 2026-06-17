@@ -41,6 +41,7 @@ export interface ISyncObjectWriteParams {
 
 export interface ISyncObjectsRepository {
   findOne(userId: string, resource: string, entityId: string, tx: ITxContext): Promise<ISyncObjectRow | null>;
+  listActiveByResource(userId: string, resource: string, tx: ITxContext): Promise<ISyncObjectRow[]>;
   /** Pull: ORDER BY version, WHERE version > cursorVersion. */
   listByResourceAfterVersion(
     userId: string,

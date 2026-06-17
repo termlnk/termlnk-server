@@ -17,7 +17,7 @@ import type { AppOpenAPI, AppRouteHandler } from '@termlnk-server/rpc-server';
 import { HttpError } from '@termlnk-server/rpc-server';
 import { requireAdminAuth } from '../middlewares/require-admin-auth';
 import { IAdminAuthService } from '../services/admin-auth.service';
-import { IAdminQueryService } from '../services/admin-query.service';
+import { IAdminQueryService, parseSyncResource } from '../services/admin-query.service';
 import * as routes from './admin-users.routes';
 
 export class AdminUsersController {
@@ -39,6 +39,7 @@ export class AdminUsersController {
       .openapi(routes.revokeAllDevices, this._revokeAllDevices)
       .openapi(routes.getUserOAuthIdentities, this._getUserOAuthIdentities)
       .openapi(routes.getUserSyncStats, this._getUserSyncStats)
+      .openapi(routes.clearUserSyncResource, this._clearUserSyncResource)
       .openapi(routes.disableUser, this._disableUser)
       .openapi(routes.enableUser, this._enableUser);
   }
@@ -86,6 +87,22 @@ export class AdminUsersController {
     const { id } = c.req.valid('param');
     const stats = await this._queryService.getUserSyncStats(id);
     return c.json(stats, 200);
+  };
+
+  private _clearUserSyncResource: AppRouteHandler<typeof routes.clearUserSyncResource> = async (c) => {
+    const { id, resource: rawResource } = c.req.valid('param');
+    const user = await this._queryService.getUserDetail(id);
+    if (!user) {
+      throw new HttpError(404, 'user_not_found');
+    }
+
+    const resource = parseSyncResource(rawResource);
+    if (!resource) {
+      throw new HttpError(400, 'invalid_sync_resource');
+    }
+
+    const result = await this._queryService.clearUserSyncResource(id, resource);
+    return c.json(result, 200);
   };
 
   private _disableUser: AppRouteHandler<typeof routes.disableUser> = async (c) => {

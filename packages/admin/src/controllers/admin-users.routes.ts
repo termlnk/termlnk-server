@@ -14,6 +14,7 @@
  */
 
 import { createRoute, z } from '@hono/zod-openapi';
+import { SYNC_RESOURCES } from '../services/admin-query.service';
 
 const tags = ['Admin Users'];
 
@@ -57,6 +58,11 @@ const oauthIdentitySchema = z.object({
 
 const userIdParam = z.object({
   id: z.string().uuid(),
+});
+
+const clearSyncResourceParam = z.object({
+  id: z.string().uuid(),
+  resource: z.enum(SYNC_RESOURCES),
 });
 
 const deviceRevokeParam = z.object({
@@ -191,6 +197,31 @@ export const getUserSyncStats = createRoute({
       },
     },
     401: { description: 'Unauthorized', ...errorJson },
+  },
+});
+
+export const clearUserSyncResource = createRoute({
+  method: 'delete',
+  path: '/users/{id}/sync-resources/{resource}',
+  tags,
+  summary: 'Clear one sync resource type for a user',
+  security: [{ AdminBearer: [] }],
+  request: { params: clearSyncResourceParam },
+  responses: {
+    200: {
+      description: 'Resource cleared',
+      content: {
+        'application/json': {
+          schema: z.object({
+            resource: z.enum(SYNC_RESOURCES),
+            deleted: z.number(),
+            cursor: z.string(),
+          }),
+        },
+      },
+    },
+    401: { description: 'Unauthorized', ...errorJson },
+    404: { description: 'User not found', ...errorJson },
   },
 });
 

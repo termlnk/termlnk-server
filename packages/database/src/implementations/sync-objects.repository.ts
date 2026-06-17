@@ -39,6 +39,19 @@ export class PgSyncObjectsRepository implements ISyncObjectsRepository {
     return rows[0] ?? null;
   }
 
+  async listActiveByResource(userId: string, resource: string, tx: ITxContext): Promise<ISyncObjectRow[]> {
+    const db = pgExec(this._adaptor, tx);
+    return db
+      .select()
+      .from(syncObjects)
+      .where(and(
+        eq(syncObjects.userId, userId),
+        eq(syncObjects.resource, resource),
+        eq(syncObjects.deleted, false)
+      ))
+      .orderBy(syncObjects.version);
+  }
+
   async listByResourceAfterVersion(
     userId: string,
     resource: string,

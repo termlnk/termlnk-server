@@ -60,6 +60,12 @@ export interface IUserSyncStats {
   totalSyncObjects: number;
 }
 
+export interface IClearUserSyncResourceResult {
+  resource: string;
+  deleted: number;
+  cursor: string;
+}
+
 export interface IUser {
   id: string;
   email: string;
@@ -142,6 +148,9 @@ export const api = {
 
   getUserSyncStats: (id: string) =>
     adminFetch<IUserSyncStats>(`/users/${id}/sync-stats`),
+
+  clearUserSyncResource: (id: string, resource: string) =>
+    adminFetch<IClearUserSyncResourceResult>(`/users/${id}/sync-resources/${resource}`, { method: 'DELETE' }),
 
   disableUser: (id: string) =>
     adminFetch<void>(`/users/${id}/disable`, { method: 'POST' }),

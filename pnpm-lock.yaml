@@ -226,6 +226,9 @@ importers:
       '@termlnk-server/rpc-server':
         specifier: workspace:*
         version: link:../rpc-server
+      '@termlnk-server/sync-broadcast':
+        specifier: workspace:*
+        version: link:../sync-broadcast
       drizzle-orm:
         specifier: ^1.0.0-rc.3
         version: 1.0.0-rc.2-e38a2ba(@cloudflare/workers-types@4.20260517.1)(@electric-sql/pglite@0.2.17)(@libsql/client@0.14.0)(@types/pg@8.20.0)(@upstash/redis@1.38.0)(pg@8.21.0)(postgres@3.4.9)(zod@4.4.3)

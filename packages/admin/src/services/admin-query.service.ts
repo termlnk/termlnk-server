@@ -13,12 +13,30 @@
  * governing permissions and limitations under the License.
  */
 
-import { createIdentifier } from '@termlnk-server/core';
+import type { IPokeEnvelope } from '@termlnk-server/sync-broadcast';
+import { createIdentifier, Optional } from '@termlnk-server/core';
 import { IDBAdaptorService } from '@termlnk-server/database';
 import { oauthIdentities, refreshTokens, syncClients, syncObjects, users } from '@termlnk-server/database/entities';
 import { pgExec } from '@termlnk-server/database/helpers';
-import { IRefreshTokensRepository, ISrpCredentialsRepository, IUsersRepository } from '@termlnk-server/database/repositories';
+import { IRefreshTokensRepository, ISrpCredentialsRepository, ISyncGlobalVersionRepository, ISyncObjectsRepository, IUsersRepository } from '@termlnk-server/database/repositories';
+import { ISyncBroadcaster } from '@termlnk-server/sync-broadcast';
 import { and, count, countDistinct, eq, gt, ilike, isNull, or } from 'drizzle-orm';
+import { z } from 'zod';
+
+export const SYNC_RESOURCES = [
+  'host',
+  'config',
+  'ai_provider',
+  'mcp_server',
+  'skill',
+  'snippet',
+  'ssh_key',
+  'identity',
+  'known_host',
+  'port_forwarding_rule',
+] as const;
+export const syncResourceIdSchema = z.enum(SYNC_RESOURCES);
+export type SyncResourceId = (typeof SYNC_RESOURCES)[number];
 
 export interface IStatsOverview {
   totalUsers: number;
@@ -99,6 +117,12 @@ export interface IUserSyncStats {
   totalSyncObjects: number;
 }
 
+export interface IClearUserSyncResourceResult {
+  resource: SyncResourceId;
+  deleted: number;
+  cursor: string;
+}
+
 export interface IAdminQueryService {
   getStatsOverview(): Promise<IStatsOverview>;
   getSyncStats(): Promise<ISyncStats>;
@@ -110,6 +134,7 @@ export interface IAdminQueryService {
   revokeDevice(userId: string, jti: string): Promise<void>;
   revokeAllDevices(userId: string): Promise<void>;
   setUserActive(userId: string, isActive: boolean): Promise<void>;
+  clearUserSyncResource(userId: string, resource: SyncResourceId): Promise<IClearUserSyncResourceResult>;
 }
 
 export const IAdminQueryService = createIdentifier<IAdminQueryService>('admin.query-service');
@@ -119,7 +144,10 @@ export class AdminQueryService implements IAdminQueryService {
     @IDBAdaptorService private readonly _db: IDBAdaptorService,
     @IRefreshTokensRepository private readonly _refreshTokens: IRefreshTokensRepository,
     @ISrpCredentialsRepository private readonly _srpCredentials: ISrpCredentialsRepository,
-    @IUsersRepository private readonly _users: IUsersRepository
+    @IUsersRepository private readonly _users: IUsersRepository,
+    @ISyncGlobalVersionRepository private readonly _versions: ISyncGlobalVersionRepository,
+    @ISyncObjectsRepository private readonly _objects: ISyncObjectsRepository,
+    @Optional(ISyncBroadcaster) private readonly _broadcaster?: ISyncBroadcaster
   ) {}
 
   async getStatsOverview(): Promise<IStatsOverview> {
@@ -289,8 +317,59 @@ export class AdminQueryService implements IAdminQueryService {
       await this._refreshTokens.revokeAllByUserId(userId, new Date());
     }
   }
+
+  async clearUserSyncResource(userId: string, resource: SyncResourceId): Promise<IClearUserSyncResourceResult> {
+    const result = await this._db.transaction(async (tx) => {
+      await this._versions.ensureExists(userId, tx);
+      let currentVersion = await this._versions.findCurrentForUpdate(userId, tx);
+      const rows = await this._objects.listActiveByResource(userId, resource, tx);
+      const updatedAt = new Date();
+
+      for (const row of rows) {
+        currentVersion += 1;
+        await this._objects.update({
+          userId,
+          resource,
+          entityId: row.entityId,
+          payload: null,
+          version: currentVersion,
+          deleted: true,
+          updatedAt,
+        }, tx);
+      }
+
+      if (rows.length > 0) {
+        await this._versions.update(userId, currentVersion, tx);
+      }
+
+      return {
+        resource,
+        deleted: rows.length,
+        cursor: String(currentVersion),
+      };
+    });
+
+    if (result.deleted > 0) {
+      const envelope: IPokeEnvelope<SyncResourceId> = {
+        resource,
+        cursor: result.cursor,
+        originClientId: 'admin:sync-resource-clear',
+      };
+      void this._broadcaster?.publish<SyncResourceId>(userId, envelope).catch(() => undefined);
+    }
+
+    return result;
+  }
 }
 
 function escapeLike(input: string): string {
   return input.replace(/[%_\\]/g, '\\$&');
+}
+
+export function parseSyncResource(resource: string): SyncResourceId | null {
+  const parsed = syncResourceIdSchema.safeParse(resource);
+  if (!parsed.success) {
+    return null;
+  }
+  return parsed.data;
 }

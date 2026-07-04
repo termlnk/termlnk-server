@@ -57,6 +57,7 @@ export class AuthController extends Disposable {
     router.use('/devices', auth);
     router.use('/devices/*', auth);
     router.use('/logout', auth);
+    router.use('/password/*', auth);
 
     router
       .openapi(routes.register, this._register)
@@ -67,7 +68,8 @@ export class AuthController extends Disposable {
       .openapi(routes.devices, this._devices)
       .openapi(routes.revokeDevice, this._revokeDevice)
       .openapi(routes.logout, this._logout)
-      .openapi(routes.capabilities, this._capabilities);
+      .openapi(routes.capabilities, this._capabilities)
+      .openapi(routes.passwordChange, this._passwordChange);
 
     const config = this._configService.getConfig<IAuthPluginConfig>(AUTH_PLUGIN_CONFIG_KEY);
     if (this._google && this._flow && config?.google?.desktopCallbackUrl) {
@@ -273,6 +275,14 @@ export class AuthController extends Disposable {
     const userId = c.get('userId');
     const { argon2SaltB64, srpSalt, srpVerifier } = c.req.valid('json');
     const status = await this._authService.setupE2E(userId, argon2SaltB64, srpSalt, srpVerifier);
+    return c.json(status, 200);
+  };
+
+  private _passwordChange: AppRouteHandler<typeof routes.passwordChange> = async (c) => {
+    const userId = c.get('userId');
+    const currentJti = c.get('currentJti');
+    const { argon2SaltB64, srpSalt, srpVerifier } = c.req.valid('json');
+    const status = await this._authService.changePassword(userId, currentJti, argon2SaltB64, srpSalt, srpVerifier);
     return c.json(status, 200);
   };
 }

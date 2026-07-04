@@ -75,6 +75,7 @@ export interface IAuthService {
   issueSession(userId: string, device: IDeviceMeta): Promise<{ user: IUserAccount; tokens: ITokenBundle }>;
   getE2EStatus(userId: string): Promise<IE2EStatus>;
   setupE2E(userId: string, argon2SaltB64: string, srpSalt: string, srpVerifier: string): Promise<IE2EStatus>;
+  changePassword(userId: string, currentJti: string, argon2SaltB64: string, srpSalt: string, srpVerifier: string): Promise<IE2EStatus>;
 }
 
 export const IAuthService = createIdentifier<IAuthService>('auth.service');
@@ -317,6 +318,18 @@ export class AuthService implements IAuthService {
       }
       throw err;
     }
+    return { configured: true, argon2SaltB64 };
+  }
+
+  async changePassword(userId: string, currentJti: string, argon2SaltB64: string, srpSalt: string, srpVerifier: string): Promise<IE2EStatus> {
+    const existing = await this._srpCredentials.findByUserId(userId);
+    if (!existing) {
+      throw new HttpError(409, 'no_password_set', 'no password is set for this account — use e2e/setup instead');
+    }
+    await this._db.transaction(async (tx) => {
+      await this._srpCredentials.upsert({ userId, argon2SaltB64, srpSalt, srpVerifier }, tx);
+      await this._refreshTokens.revokeAllExceptJti(userId, currentJti, new Date(), tx);
+    });
     return { configured: true, argon2SaltB64 };
   }
 

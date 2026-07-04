@@ -24,7 +24,7 @@
  */
 
 import { createRoute, z } from '@hono/zod-openapi';
-import { authCapabilitiesResponseSchema, deviceListResponseSchema, e2eSetupRequestSchema, e2eSetupResponseSchema, errorResponseSchema, googleClaimRequestSchema, googleClaimResponseSchema, meResponseSchema, refreshRequestSchema, refreshResponseSchema, registerRequestSchema, registerResponseSchema, srpInitRequestSchema, srpInitResponseSchema, srpVerifyRequestSchema, srpVerifyResponseSchema } from '@termlnk-server/protocol';
+import { authCapabilitiesResponseSchema, changePasswordRequestSchema, changePasswordResponseSchema, deviceListResponseSchema, e2eSetupRequestSchema, e2eSetupResponseSchema, errorResponseSchema, googleClaimRequestSchema, googleClaimResponseSchema, meResponseSchema, refreshRequestSchema, refreshResponseSchema, registerRequestSchema, registerResponseSchema, srpInitRequestSchema, srpInitResponseSchema, srpVerifyRequestSchema, srpVerifyResponseSchema } from '@termlnk-server/protocol';
 
 const tags = ['Auth'];
 
@@ -180,5 +180,20 @@ export const e2eSetup = createRoute({
     400: { description: 'Invalid request', ...errorJson },
     401: { description: 'Unauthorized', ...errorJson },
     409: { description: 'A password is already set (unlock with it instead)', ...errorJson },
+  },
+});
+
+export const passwordChange = createRoute({
+  method: 'post',
+  path: '/password/change',
+  tags,
+  summary: 'Change the account password — replaces the SRP credential and revokes other devices',
+  security: [{ Bearer: [] }],
+  request: { body: { content: { 'application/json': { schema: changePasswordRequestSchema } } } },
+  responses: {
+    200: { description: 'Password updated; returns the new e2e status', content: { 'application/json': { schema: changePasswordResponseSchema } } },
+    400: { description: 'Invalid request', ...errorJson },
+    401: { description: 'Unauthorized', ...errorJson },
+    409: { description: 'No password set (use e2e/setup instead)', ...errorJson },
   },
 });

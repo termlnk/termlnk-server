@@ -260,3 +260,19 @@ export type IE2ESetupRequest = z.infer<typeof e2eSetupRequestSchema>;
 
 export const e2eSetupResponseSchema = e2eStatusSchema;
 export type IE2ESetupResponse = z.infer<typeof e2eSetupResponseSchema>;
+
+/* ───── POST /auth/password/change ─────
+ * Bearer auth. Replace the account's SRP credential (password change). The client
+ * derives a fresh argon2 salt, master key, and SRP verifier from the new password;
+ * the server stores the new triple and revokes all OTHER refresh tokens so other
+ * devices must re-login with the new password. */
+
+export const changePasswordRequestSchema = z.object({
+  argon2SaltB64: base64Schema,
+  srpSalt: hexSchema,
+  srpVerifier: hexSchema,
+});
+export type IChangePasswordRequest = z.infer<typeof changePasswordRequestSchema>;
+
+export const changePasswordResponseSchema = e2eStatusSchema;
+export type IChangePasswordResponse = z.infer<typeof changePasswordResponseSchema>;

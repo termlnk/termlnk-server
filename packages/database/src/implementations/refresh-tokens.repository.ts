@@ -15,7 +15,7 @@
 
 import type { IRefreshTokenInsertParams, IRefreshTokenRow, IRefreshTokensRepository } from '../repositories/refresh-tokens.repository';
 import type { ITxContext } from '../services/db-adaptor.service';
-import { and, desc, eq, gt, isNull } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, ne } from 'drizzle-orm';
 import { refreshTokens } from '../entities';
 import { IDBAdaptorService } from '../services/db-adaptor.service';
 import { pgExec } from './_helpers';
@@ -87,5 +87,17 @@ export class PgRefreshTokensRepository implements IRefreshTokensRepository {
       .update(refreshTokens)
       .set({ revokedAt })
       .where(and(eq(refreshTokens.userId, userId), isNull(refreshTokens.revokedAt)));
+  }
+
+  async revokeAllExceptJti(userId: string, keepJti: string, revokedAt: Date, tx?: ITxContext): Promise<void> {
+    const db = pgExec(this._adaptor, tx);
+    await db
+      .update(refreshTokens)
+      .set({ revokedAt })
+      .where(and(
+        eq(refreshTokens.userId, userId),
+        ne(refreshTokens.jti, keepJti),
+        isNull(refreshTokens.revokedAt)
+      ));
   }
 }

@@ -39,6 +39,8 @@ export interface IRefreshTokensRepository {
   revokeOneByUserId(userId: string, jti: string, revokedAt: Date, tx?: ITxContext): Promise<void>;
   /** Revoke every non-revoked token of the user — `logoutAll`. */
   revokeAllByUserId(userId: string, revokedAt: Date, tx?: ITxContext): Promise<void>;
+  /** Revoke every non-revoked token of the user EXCEPT the given jti — used by password change. */
+  revokeAllExceptJti(userId: string, keepJti: string, revokedAt: Date, tx?: ITxContext): Promise<void>;
 }
 
 export const IRefreshTokensRepository = createIdentifier<IRefreshTokensRepository>('database.refresh-tokens-repository');

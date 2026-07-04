@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/sync-broadcast",
   "type": "module",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "ISyncBroadcaster abstraction for sync poke fanout. Adaptors: redis (multi-replica), memory (tests/single-process).",
   "license": "PolyForm-Noncommercial-1.0.0",

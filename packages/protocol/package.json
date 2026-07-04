@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/protocol",
   "type": "module",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": false,
   "description": "Termlnk cloud wire format Zod schemas — shared between desktop client and server",
   "license": "PolyForm-Noncommercial-1.0.0",

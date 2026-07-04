@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/auth",
   "type": "module",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Auth feature: SRP6a register/login + JWT issue/refresh + device list. Plugs into RpcServerPlugin via DI.",
   "license": "PolyForm-Noncommercial-1.0.0",

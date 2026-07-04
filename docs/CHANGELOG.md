@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.1](https://github.com/termlnk/termlnk-server/compare/v0.4.0...v0.4.1) (2026-07-04)
+
+
+### Features
+
+* **admin:** clear user sync resources ([0624cd3](https://github.com/termlnk/termlnk-server/commit/0624cd3e671856f985c1b1a11b6a8fc95622ed43))
+* **auth:** add password change endpoint with device revocation ([ebb796b](https://github.com/termlnk/termlnk-server/commit/ebb796b2777db7375f203c07d93436ec0b1e01c1))
+
 # [0.4.0](https://github.com/termlnk/termlnk-server/compare/v0.3.0...v0.4.0) (2026-06-15)
 
 

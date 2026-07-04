@@ -1,7 +1,7 @@
 {
   "name": "@termlnk-server/database",
   "type": "module",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Database plugin + IDBAdaptorService abstraction (Postgres via node-pg).",
   "license": "PolyForm-Noncommercial-1.0.0",

@@ -28,11 +28,14 @@ import { createIdentifier } from '@termlnk-server/core';
  * session/invite/connection ids, and an absolute expiry timestamp. Anyone with
  * the secret can mint a token; anyone WITHOUT it can't forge one.
  *
- * Replay semantics: the token is NOT single-use. The 5-minute TTL bounds the
- * replay window; cross-account misuse is further constrained by the relay
- * controller pinning `payload.joinerUserId` to the verifying JWT's userId
- * (token theft does not let a third party impersonate the original joiner).
- * The token is never persisted server-side — the HMAC + JWT pin is the proof.
+ * Replay semantics: the token is NOT single-use, and its TTL is a reconnect
+ * window rather than a replay bound — the joiner's transport re-presents it on
+ * every WS reconnect. Misuse is constrained by the attach-time bindings
+ * instead: the relay controller pins `payload.joinerUserId` to the verifying
+ * JWT's userId for signed-in joiners (token theft does not let a third party
+ * impersonate the original joiner), and pins the claimed `connectionId` for
+ * anonymous (`anon-` prefixed) joiners. The token is never persisted
+ * server-side — the HMAC + pins are the proof.
  */
 export interface IRelayClaimTokenPayload {
   /** Owner userId — the relay should attach this joiner to the owner's bucket. */

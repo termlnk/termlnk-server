@@ -62,7 +62,15 @@ export interface ISharedTerminalPluginConfig {
    * unit-test substitution.
    */
   relayClaimTokenSecret?: string;
-  /** Relay claim token TTL in ms. Default 5 minutes. */
+  /**
+   * Validity window for relay-claim tokens in ms. Default 12 hours. This is a
+   * reconnect window, not an anti-abuse bound: the joiner-side transport
+   * re-presents the same token on every WS reconnect and a consumed
+   * single-use invite cannot be re-claimed, so expiry mid-session strands
+   * legitimate joiners in a 401 retry loop. Abuse is bounded by the token
+   * bindings (JWT-subject pin for signed-in joiners, connectionId pin for
+   * anonymous ones) plus E2EE, not by this TTL.
+   */
   relayClaimTokenTtlMs?: number;
 
   // -- multiplayer (same-account device announce + WebRTC signalling)
@@ -105,7 +113,7 @@ export const defaultPluginConfig: Required<Pick<
   collabRoutePrefix: '/v1/collab',
   landingPath: '/s',
   downloadUrl: 'https://termlnk.com',
-  relayClaimTokenTtlMs: 5 * 60 * 1000,
+  relayClaimTokenTtlMs: 12 * 60 * 60 * 1000,
   multiplayerRoutePrefix: '/v1/multiplayer',
   freshnessWindowMs: 90_000,
   sweepIntervalMs: 60_000,

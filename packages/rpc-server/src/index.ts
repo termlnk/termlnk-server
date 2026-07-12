@@ -24,6 +24,7 @@ export type { IRequestLogger } from './common/request-logger';
 export type { AppOpenAPI, AppRouteHandler, IAppBindings, IAppEnv, IAppVariables, IAuthVariables } from './common/types';
 export { RPC_SERVER_PLUGIN_CONFIG_KEY } from './config.schema';
 export type { IRpcServerConfig, LoggerMiddlewareFactory } from './config.schema';
+export { optionalAuth } from './middlewares/optional-auth';
 export { authRateLimit, createRateLimiter, type IRateLimitOptions } from './middlewares/rate-limit';
 export { requireAuth } from './middlewares/require-auth';
 export { createWsBearerAuthMiddleware } from './middlewares/ws-bearer-auth';

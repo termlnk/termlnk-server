@@ -19,6 +19,7 @@ import type { IRelayClaimTokenService } from './relay-claim-token.service';
 import { createIdentifier } from '@termlnk-server/core';
 import { UniqueViolationError } from '@termlnk-server/database/repositories';
 import { HttpError } from '@termlnk-server/rpc-server';
+import { generateAnonymousJoinerId } from '../common/anonymous-joiner';
 
 export interface ICreateInviteParams {
   userId: string;
@@ -34,8 +35,13 @@ export interface ICreateInviteParams {
 }
 
 export interface IClaimInviteParams {
-  /** Authenticated claimant — does not need to match the invite owner. */
-  claimantUserId: string;
+  /**
+   * Authenticated claimant — does not need to match the invite owner.
+   * `null` = anonymous claimant (no account): the service generates an
+   * ephemeral `anon-` id and MUST mint a relay-claim token, since an
+   * anonymous joiner has no JWT to route them into any relay bucket.
+   */
+  claimantUserId: string | null;
   inviteId: string;
   capabilityHash: string;
   displayName?: string;
@@ -55,6 +61,8 @@ export interface ICollabService {
    *   - 410 invite_not_active      — already consumed / revoked / expired
    *   - 410 invite_expired         — past capability.exp
    *   - 400 invalid_capability_hash — caller's hash != stored hash (tampering / wrong fragment)
+   *   - 503 anonymous_join_unavailable — anonymous claim while the relay-claim
+   *     token secret is not configured (no way to route the joiner)
    */
   claim(params: IClaimInviteParams): Promise<IClaimCollabInviteResponse>;
 }
@@ -96,14 +104,26 @@ export class CollabService implements ICollabService {
   constructor(
     private readonly _invites: ICollabInvitesRepository,
     /**
-     * Optional. When provided, `claim()` mints a one-shot relay claim token
-     * that lets cross-account joiners attach to the OWNER's relay bucket.
-     * Without it, the response field stays undefined and cross-account
-     * scenarios remain broken (same-account still works because the
-     * joiner's own JWT routes to the same `userId:sessionId` bucket).
+     * Optional. When provided, `claim()` mints a relay claim token that lets
+     * cross-account and anonymous joiners attach to the OWNER's relay bucket.
+     * Without it, the response field stays undefined, anonymous claims are
+     * rejected, and cross-account scenarios remain broken (same-account still
+     * works because the joiner's own JWT routes to the same
+     * `userId:sessionId` bucket).
      */
     private readonly _relayClaimToken: IRelayClaimTokenService | null = null,
-    private readonly _relayClaimTokenTtlMs: number = 5 * 60 * 1000
+    /**
+     * Validity window for minted relay-claim tokens. This is a RECONNECT
+     * window, not an anti-abuse bound: the joiner-side transport re-presents
+     * the same token on every WS reconnect, and a consumed single-use invite
+     * cannot be re-claimed for a fresh one — a short TTL therefore kills
+     * legitimate sessions (reconnect → 401 → retry loop) without adding
+     * security. Abuse is bounded by the bindings instead: signed-in tokens
+     * are pinned to the joiner's JWT subject, anonymous tokens to the claimed
+     * connectionId, and either way the relay only ever carries E2EE
+     * ciphertext a token holder cannot read without the URL-fragment key.
+     */
+    private readonly _relayClaimTokenTtlMs: number = 12 * 60 * 60 * 1000
   ) {}
 
   async create(params: ICreateInviteParams): Promise<ICollabInviteServerView> {
@@ -169,22 +189,34 @@ export class CollabService implements ICollabService {
       throw new HttpError(400, 'invalid_capability_hash');
     }
 
-    // 3. Mint the relay-claim token BEFORE flipping the row to consumed.
+    // 3. Resolve the claimant identity. Anonymous claimants get an ephemeral
+    //    `anon-` id and REQUIRE the token service: without a JWT the relay-claim
+    //    token is their only way to reach the owner's relay bucket. Reject
+    //    BEFORE the atomic consume below so a single-use invite isn't burned
+    //    by a claim that can never attach.
+    const anonymous = params.claimantUserId === null;
+    if (anonymous && !this._relayClaimToken) {
+      throw new HttpError(503, 'anonymous_join_unavailable', 'relay-claim token secret is not configured');
+    }
+    const claimantUserId = params.claimantUserId ?? generateAnonymousJoinerId();
+
+    // 4. Mint the relay-claim token BEFORE flipping the row to consumed.
     //    Otherwise a sign() failure (e.g. WebCrypto fault) would leave a
     //    single-use invite irreversibly consumed but the joiner with no
     //    token — they'd be unable to retry and unable to attach. Same-account
-    //    joiners skip the token entirely (`_relayClaimToken` is null).
+    //    signed-in joiners skip the token entirely (`_relayClaimToken` is null).
     const connectionId = generateConnectionId();
     let relayClaimToken: string | undefined;
     if (this._relayClaimToken) {
       // We sign the OWNER's userId (row.userId) so the relay can route the
       // joiner's WS into the owner's session bucket. exp is server-clock;
-      // relay rejects expired tokens before binding to the bucket. The
-      // controller additionally pins payload.joinerUserId == ws JWT.userId
-      // so a leaked token can't be used under another account.
+      // relay rejects expired tokens before binding to the bucket. Leaked
+      // tokens stay unusable: signed-in joiners are pinned to their JWT
+      // subject (payload.joinerUserId == ws JWT.userId), anonymous joiners
+      // to the claimed connectionId (see resolve-relay-identity).
       relayClaimToken = await this._relayClaimToken.sign({
         ownerUserId: row.userId,
-        joinerUserId: params.claimantUserId,
+        joinerUserId: claimantUserId,
         sessionId: row.sessionId,
         inviteId: row.inviteId,
         connectionId,
@@ -192,7 +224,7 @@ export class CollabService implements ICollabService {
       });
     }
 
-    // 4. Atomic consume — handles the concurrent-claim race for single-use invites.
+    // 5. Atomic consume — handles the concurrent-claim race for single-use invites.
     //    `false` here means another claimant won between our findByInviteId and the
     //    update, or the owner just revoked it. Either way the caller sees 410.
     const consumedAt = new Date();

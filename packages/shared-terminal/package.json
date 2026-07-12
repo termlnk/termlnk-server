@@ -40,9 +40,11 @@
     "@hono/node-server": "^2.0.2",
     "@termlnk-server/shared": "workspace:*",
     "@types/node": "^25.8.0",
+    "@types/ws": "^8.18.1",
     "ioredis": "^5.10.1",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.8",
+    "ws": "^8.20.1"
   }
 }

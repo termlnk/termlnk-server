@@ -52,13 +52,19 @@ const envSchema = z.object({
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(15 * 60),
   JWT_REFRESH_TTL_SECONDS: z.coerce.number().int().positive().default(30 * 24 * 60 * 60),
   /**
-   * Relay claim token TTL. The token is one-shot, short-lived, and signed
-   * with JWT_ACCESS_SECRET (HMAC over a custom envelope shape that can't
-   * collide with JWT verification). A separate secret would not increase
-   * security: if JWT_ACCESS_SECRET leaks the attacker can already forge any
-   * user's access token and join any session directly.
+   * Relay claim token validity window. Signed with JWT_ACCESS_SECRET (HMAC
+   * over a custom envelope shape that can't collide with JWT verification);
+   * a separate secret would not increase security: if JWT_ACCESS_SECRET
+   * leaks the attacker can already forge any user's access token and join
+   * any session directly.
+   *
+   * Defaults to 12 hours because this is a RECONNECT window, not an
+   * anti-abuse bound — the joiner's transport re-presents the same token on
+   * every WS reconnect and a consumed single-use invite cannot be re-claimed,
+   * so a short TTL strands live sessions in a 401 retry loop. Abuse is
+   * bounded by the token's JWT-subject / connectionId pins plus E2EE.
    */
-  RELAY_CLAIM_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(5 * 60),
+  RELAY_CLAIM_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(12 * 60 * 60),
   ALLOW_OPEN_REGISTRATION: booleanLike.default(true),
   REQUIRE_EMAIL_VERIFICATION: booleanLike.default(false),
   GOOGLE_OAUTH_ENABLED: booleanLike.default(false),

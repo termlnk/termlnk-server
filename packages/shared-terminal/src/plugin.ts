@@ -38,7 +38,7 @@ export const SHARED_TERMINAL_PLUGIN_NAME = 'TERMLNK_SHARED_TERMINAL_PLUGIN';
  * session" feature across its three planes — they all key off the same
  * `sessionId` and evolve together:
  *   - relay      : PTY frame fan-out over WS (`/v1/shared-terminal/`)
- *   - collab     : invite admission + one-shot relay-claim token (`/v1/collab`, `/s`)
+ *   - collab     : invite admission + relay-claim token minting (`/v1/collab`, `/s`)
  *   - multiplayer: same-account device announce + WebRTC signalling (`/v1/multiplayer`)
  *
  * Each plane keeps its own route prefix so the wire contract shared with the
@@ -95,7 +95,8 @@ export class SharedTerminalPlugin extends Plugin {
       [ICollabService, {
         useFactory: (i: Injector) => new CollabService(
           i.get(ICollabInvitesRepository),
-          // No secret → no cross-account support; same-account claim still works
+          // No secret → no cross-account support and anonymous claims are
+          // rejected with 503; same-account signed-in claim still works
           // because the joiner's own JWT routes into the owner's bucket.
           secret ? i.get(IRelayClaimTokenService) : null,
           ttlMs

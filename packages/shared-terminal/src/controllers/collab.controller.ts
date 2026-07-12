@@ -15,7 +15,7 @@
 
 import type { AppOpenAPI, AppRouteHandler } from '@termlnk-server/rpc-server';
 import { IJwtService } from '@termlnk-server/crypto';
-import { requireAuth } from '@termlnk-server/rpc-server';
+import { optionalAuth, requireAuth } from '@termlnk-server/rpc-server';
 import { ICollabService } from '../services/collab.service';
 import * as routes from './collab.routes';
 
@@ -26,7 +26,14 @@ export class CollabController {
   ) {}
 
   registerRoutes(router: AppOpenAPI): void {
-    router.use('*', requireAuth(this._jwt));
+    // Auth is mounted per-path, NOT `use('*')`: claim must accept anonymous
+    // callers (invite link = admission proof; the relay-claim token routes
+    // them), while every owner-side route stays behind requireAuth. A new
+    // collab route MUST explicitly pick one of the two middlewares here.
+    const auth = requireAuth(this._jwt);
+    router.use('/invite', auth); // create (POST) + list (GET)
+    router.use('/invite/:inviteId/revoke', auth);
+    router.use('/invite/:inviteId/claim', optionalAuth(this._jwt));
     router
       .openapi(routes.create, this._create)
       .openapi(routes.revoke, this._revoke)
@@ -66,7 +73,9 @@ export class CollabController {
   };
 
   private _claim: AppRouteHandler<typeof routes.claim> = async (c) => {
-    const claimantUserId = c.get('userId');
+    // optionalAuth leaves userId unset for anonymous callers; normalize the
+    // resulting `undefined` to the service contract's explicit null.
+    const claimantUserId = c.get('userId') ?? null;
     const { inviteId } = c.req.valid('param');
     const body = c.req.valid('json');
     const result = await this._collabService.claim({

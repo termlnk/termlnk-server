@@ -159,7 +159,15 @@ async function main(): Promise<void> {
 
   mountPokeWebsocket(appService.app, { jwt, syncService });
 
-  const wss = new WebSocketServer({ noServer: true });
+  // handleProtocols: clients smuggle credentials through the
+  // sec-websocket-protocol header (Bearer.<jwt> / RelayToken.<t>). RFC 6455
+  // requires the server to select one of the offered subprotocols; without
+  // this, strict clients (browsers, Node's built-in undici WebSocket,
+  // Electron) fail the handshake with 1006 even though auth succeeded.
+  const wss = new WebSocketServer({
+    noServer: true,
+    handleProtocols: (protocols) => protocols.values().next().value ?? false,
+  });
   const server = serve(
     {
       fetch: appService.app.fetch,

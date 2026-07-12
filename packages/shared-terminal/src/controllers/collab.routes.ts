@@ -33,6 +33,15 @@ const inviteIdParamsSchema = z.object({
   inviteId: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/),
 });
 
+/**
+ * OpenAPI "optional security" idiom: the empty object entry means "no auth is
+ * also acceptable". Hoisted with an explicit annotation because inlining the
+ * literal into createRoute() degrades the whole route's type inference
+ * (request/response payloads collapse to never). The optionalAuth middleware
+ * remains the runtime source of truth.
+ */
+const optionalBearerSecurity: Record<string, string[]>[] = [{ Bearer: [] }, {}];
+
 export const create = createRoute({
   method: 'post',
   path: '/invite',
@@ -80,8 +89,8 @@ export const claim = createRoute({
   path: '/invite/{inviteId}/claim',
   tags,
   summary: 'Receiver-side claim: validate capability + atomically consume the invite',
-  description: 'Called by the invited device (not the owner). Server checks capability hash + atomically transitions status to consumed, returning the connection metadata needed to attach to the shared-terminal relay.',
-  security: [{ Bearer: [] }],
+  description: 'Called by the invited device (not the owner). Server checks capability hash + atomically transitions status to consumed, returning the connection metadata needed to attach to the shared-terminal relay. Auth is OPTIONAL: anonymous callers are admitted on invite possession alone and receive an ephemeral anon- identity inside the relay-claim token.',
+  security: optionalBearerSecurity,
   request: {
     params: inviteIdParamsSchema,
     body: { content: { 'application/json': { schema: claimCollabInviteRequestSchema } } },
@@ -89,8 +98,9 @@ export const claim = createRoute({
   responses: {
     200: { description: 'Claim accepted', content: { 'application/json': { schema: claimCollabInviteResponseSchema } } },
     400: { description: 'Invalid request / capability hash mismatch', ...errorJson },
-    401: { description: 'Unauthorized', ...errorJson },
+    401: { description: 'Authorization header present but invalid', ...errorJson },
     404: { description: 'Invite not found', ...errorJson },
     410: { description: 'Invite expired or already consumed/revoked', ...errorJson },
+    503: { description: 'Anonymous join unavailable (relay-claim token secret not configured)', ...errorJson },
   },
 });

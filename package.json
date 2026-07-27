@@ -27,7 +27,7 @@
     "release": "release-it --preReleaseId=beta"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^9.0.0",
+    "@antfu/eslint-config": "^9.2.0",
     "@release-it-plugins/workspaces": "^5.0.3",
     "@release-it/conventional-changelog": "^11.0.1",
     "@termlnk-server/shared": "workspace:*",
@@ -37,7 +37,7 @@
     "release-it": "^19.2.4",
     "turbo": "^2.9.18",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16",
-    "vitest": "^4.1.8"
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
   }
 }

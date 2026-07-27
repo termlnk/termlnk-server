@@ -30,14 +30,14 @@
   },
   "dependencies": {
     "@termlnk-server/core": "workspace:*",
-    "drizzle-orm": "^1.0.0-rc.3"
+    "drizzle-orm": "^1.0.0-rc.4"
   },
   "devDependencies": {
     "@termlnk-server/shared": "workspace:*",
     "@types/node": "^25.8.0",
     "@types/pg": "^8.20.0",
-    "drizzle-kit": "^1.0.0-rc.3",
-    "pg": "^8.21.0",
+    "drizzle-kit": "^1.0.0-rc.4",
+    "pg": "^8.22.0",
     "rxjs": "^7.8.2",
     "typescript": "^6.0.3"
   }

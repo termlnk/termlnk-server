@@ -265,9 +265,14 @@ export class AuthController extends Disposable {
     return c.body(null, 204);
   };
 
+  // Signs out THIS session only. Revoking every refresh token here used to mean one
+  // device's sign-out (or an automated one, e.g. a mobile idle-lock) knocked the user
+  // off all their other devices. Account-wide revocation stays with the password-change
+  // flow and the per-device list.
   private _logout: AppRouteHandler<typeof routes.logout> = async (c) => {
     const userId = c.get('userId');
-    await this._authService.logoutAll(userId);
+    const currentJti = c.get('currentJti');
+    await this._authService.logout(userId, currentJti);
     return c.body(null, 204);
   };
 

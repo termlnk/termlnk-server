@@ -62,7 +62,14 @@ export interface IAuthService {
   findUser(userId: string): Promise<IUserAccount | null>;
   listDevices(userId: string, currentJti: string): Promise<IDevice[]>;
   revokeDevice(userId: string, jti: string): Promise<void>;
-  logoutAll(userId: string): Promise<void>;
+  /**
+   * Sign out one session — the caller's own. There is deliberately no account-wide
+   * variant here: `changePassword` revokes the other sessions itself, and per-device
+   * revocation goes through `revokeDevice`. A general `logoutAll` sitting next to this
+   * is too easy to wire into `POST /auth/logout` by mistake, which signs the user out
+   * of every device they own.
+   */
+  logout(userId: string, currentJti: string): Promise<void>;
 
   /**
    * Resolve a Google identity to a local user (find by provider id, else by
@@ -214,8 +221,8 @@ export class AuthService implements IAuthService {
     await this._refreshTokens.revokeOneByUserId(userId, jti, new Date());
   }
 
-  async logoutAll(userId: string): Promise<void> {
-    await this._refreshTokens.revokeAllByUserId(userId, new Date());
+  async logout(userId: string, currentJti: string): Promise<void> {
+    await this._refreshTokens.revokeOneByUserId(userId, currentJti, new Date());
   }
 
   async resolveGoogleIdentity(identity: IGoogleUserInfo): Promise<IUserAccount> {

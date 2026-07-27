@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.4.2](https://github.com/termlnk/termlnk-server/compare/v0.4.1...v0.4.2) (2026-07-27)
+
+
+### Bug Fixes
+
+* **auth:** give token refresh its own rate-limit bucket ([2357124](https://github.com/termlnk/termlnk-server/commit/23571241705582c420ce296085251a0ca98c20b2))
+* **auth:** scope logout to the current session ([25583f7](https://github.com/termlnk/termlnk-server/commit/25583f726b9c9e2a4ae4e745e98fdbcdfb9abc2c))
+* code format ([0823a44](https://github.com/termlnk/termlnk-server/commit/0823a442d1326859626a5ee83f97f9cb53032e99))
+* **sync:** seal idempotency watermark at first rejected mutation ([e6f5c2b](https://github.com/termlnk/termlnk-server/commit/e6f5c2bdb2e263f1dcc46591b46da21bbe75e87d))
+
+
+### Features
+
+* **collab:** support anonymous join via invite link ([261dc76](https://github.com/termlnk/termlnk-server/commit/261dc76f8cd80881a54a821c1876be9eede15d2f))
+
 ## [0.4.1](https://github.com/termlnk/termlnk-server/compare/v0.4.0...v0.4.1) (2026-07-04)
 
 

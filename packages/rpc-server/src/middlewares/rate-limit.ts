@@ -47,7 +47,26 @@ export function createRateLimiter({ windowMs, limit }: IRateLimitOptions): Middl
 }
 
 /**
- * 20 requests / minute on the entire /v1/auth/* surface — enough for normal
- * login but enough friction to slow brute-force enumeration of SRP responses.
+ * Rate-limit policy for the whole `/v1/auth/*` surface, keyed on the caller's IP.
+ *
+ * Credential endpoints share a tight bucket — 20 requests / minute is plenty for a human
+ * signing in and enough friction to slow brute-force enumeration of SRP responses.
+ *
+ * Token renewal gets its own, much larger bucket. It is machine-driven rather than
+ * user-driven: every signed-in device refreshes once per access-token lifetime, and
+ * several devices legitimately share one public IP (NAT, office, household). Bucketing it
+ * with credential attempts let a busy egress IP answer `/auth/refresh` with 429, which a
+ * client cannot tell apart from a revoked token — ending an otherwise valid 30-day session.
  */
-export const authRateLimit = createRateLimiter({ windowMs: 60_000, limit: 20 });
+export function createAuthSurfaceRateLimit(routePrefix: string): MiddlewareHandler {
+  const credentials = createRateLimiter({ windowMs: 60_000, limit: 20 });
+  const refresh = createRateLimiter({ windowMs: 60_000, limit: 120 });
+  const refreshPath = `${routePrefix.replace(/\/+$/, '')}/refresh`;
+
+  return async (c, next) => {
+    if (c.req.path === refreshPath) {
+      return refresh(c, next);
+    }
+    return credentials(c, next);
+  };
+}

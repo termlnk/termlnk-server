@@ -17,7 +17,7 @@ import type { Dependency, Injector } from '@termlnk-server/core';
 import type { IAuthPluginConfig } from './config.schema';
 import { DependentOn, IConfigService, ILogService, InjectSelf, merge, Plugin, registerDependencies } from '@termlnk-server/core';
 import { DatabasePlugin } from '@termlnk-server/database';
-import { authRateLimit, createRouter, IAppService, RpcServerPlugin } from '@termlnk-server/rpc-server';
+import { createAuthSurfaceRateLimit, createRouter, IAppService, RpcServerPlugin } from '@termlnk-server/rpc-server';
 import { AUTH_PLUGIN_CONFIG_KEY, defaultPluginConfig } from './config.schema';
 import { AuthController } from './controllers/auth.controller';
 import { AuthService, IAuthService } from './services/auth.service';
@@ -70,7 +70,7 @@ export class AuthPlugin extends Plugin {
     const appService = this._injector.get(IAppService);
     const prefix = this._config.routePrefix ?? defaultPluginConfig.routePrefix ?? '/v1/auth';
     if (this._config.rateLimit ?? defaultPluginConfig.rateLimit) {
-      appService.use(`${prefix}/*`, authRateLimit);
+      appService.use(`${prefix}/*`, createAuthSurfaceRateLimit(prefix));
     }
     const router = createRouter();
     this._injector.get(AuthController).registerRoutes(router);

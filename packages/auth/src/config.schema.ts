@@ -33,7 +33,7 @@ export interface IAuthPluginConfig {
   requireEmailVerification: boolean;
   /** API prefix at which the auth router is mounted; default `/v1/auth` */
   routePrefix?: string;
-  /** Apply the default `authRateLimit` middleware to /v1/auth/*; default true */
+  /** Apply the default rate-limit policy to /v1/auth/* (see createAuthSurfaceRateLimit); default true */
   rateLimit?: boolean;
   google?: IGoogleOAuthPluginConfig;
 }

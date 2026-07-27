@@ -35,9 +35,17 @@ export const ISyncService = createIdentifier<ISyncService>('sync.service');
  * cursor value (stringified bigint). Pull returns rows where `version > cursor` for the
  * given resource.
  *
+ * Pull is deliberately NOT paginated, and clients depend on that: they issue a
+ * `cursor: null` pull to obtain the authoritative entityId set for a resource and delete
+ * local metadata for anything missing from it. Introducing a LIMIT here would make every
+ * row past the first page look deleted. Add an explicit `hasMore` flag to the response
+ * first if this ever needs to page (see IPullResponse in @termlnk/sync).
+ *
  * Idempotency: each (clientId, mutationId) is consumed at most once. We track the highest
  * applied id per (user, client) in `sync_clients`. Push processes mutations in id order;
- * any mutation with id <= lastMutationId is silently treated as accepted.
+ * any mutation with id <= lastMutationId is silently treated as accepted. Because that
+ * watermark cannot express holes, it only advances over a contiguous run of accepted ids —
+ * the first rejection in a batch seals it (see `watermarkSealed` below).
  *
  * Optimistic concurrency: a mutation carries `baseVersion` (the version the client thought
  * was current when it wrote). The server compares against the current row version; on
@@ -74,6 +82,14 @@ export class SyncService implements ISyncService {
       const rejected: { id: number; reason: string }[] = [];
       const touchedResources = new Set<SyncResourceId>();
 
+      // `lastMutationId` is a watermark, so it may only advance across a CONTIGUOUS run of
+      // accepted ids. Advancing it past a rejected id would make the idempotent-skip branch
+      // above swallow that id on retry — reporting "accepted" for a mutation that was never
+      // applied, which silently drops the client's edit. Once anything in this batch is
+      // rejected, later accepted ids stay outside the watermark; the client has already
+      // acked them, and a redundant re-apply after a crash is harmless.
+      let watermarkSealed = false;
+
       const sorted = [...req.mutations].sort((a, b) => a.id - b.id);
       for (const m of sorted) {
         if (m.id <= lastMutationId) {
@@ -95,7 +111,9 @@ export class SyncService implements ISyncService {
         const verdict = await applyMutation(this._objects, tx, userId, m, currentVersion);
         if (verdict.kind === 'accepted') {
           currentVersion = verdict.newVersion;
-          lastMutationId = m.id;
+          if (!watermarkSealed) {
+            lastMutationId = m.id;
+          }
           accepted.push(m.id);
           acceptedDetails.push({
             id: m.id,
@@ -105,6 +123,7 @@ export class SyncService implements ISyncService {
           });
           touchedResources.add(m.resource);
         } else {
+          watermarkSealed = true;
           rejected.push({ id: m.id, reason: verdict.reason });
         }
       }

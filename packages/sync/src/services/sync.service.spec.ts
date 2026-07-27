@@ -16,6 +16,7 @@
 import type { ITxContext } from '@termlnk-server/database';
 import type { ISyncClientsRepository, ISyncGlobalVersionRepository, ISyncObjectRow, ISyncObjectsRepository, ISyncObjectWriteParams } from '@termlnk-server/database/repositories';
 import type { ISyncMutation } from '@termlnk-server/protocol';
+import Buffer from 'node:buffer';
 import { describe, expect, it } from 'vitest';
 import { SyncService } from './sync.service';
 
